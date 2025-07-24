@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+
+{% block title %}Jainam Management{% endblock %}
+
+{% block content %}
+<style scoped>
+    .table-container {
+        position: relative;
+        overflow-x: auto;
+        max-height: 600px;
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .upload-box {
+        border: 2px dashed #a6bce8;
+        padding: 20px;
+        text-align: center;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+    }
+
+    .upload-box.dragover {
+        background-color: #e2e8f0;
+    }
+
+    .sort-icon {
+        width: 0;
+        height: 0;
+        margin: 0 5px;
+        display: inline-block;
+    }
+
+    .sort-icon.up {
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 5px solid #000;
+        opacity: 0.3;
+    }
+
+    .sort-icon.down {
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid #000;
+        opacity: 0.3;
+    }
+
+    .sort-icon.active {
+        opacity: 1;
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mt-4 mb-4">Jainam Management</h1>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Upload Section -->
+    <div class="card upload-container">
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-button-group">
+                        <label for="fileInput" class="upload-button">
+                            <span class="upload-icons">
+                                <i class="bi bi-upload"></i> Choose File
+                            </span>
+                        </label>
+                    </div>
+                    <input type="file" id="fileInput" name="file" class="file-input" accept=".xlsx,.xls">
+                    <p class="drop-text">or drag and drop an Excel file here</p>
+                    <p id="file-count" class="mt-2">No files selected</p>
+                </div>
+                <button type="submit" class="btn btn-grd-primary mt-3">Upload</button>
+            </form>
+            <div class="mt-3">
+                <a href="{{ url_for('jainam.export_csv', start_date=default_start_date, end_date=default_end_date, date=date_filter) }}" class="btn btn-grd-success" id="export-csv">Export to CSV</a>
+                <a href="{{ url_for('jainam.dashboard', start_date=default_start_date, end_date=default_end_date, date=date_filter) }}" class="btn btn-grd-info" id="dashboard-link">View Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            Filter by Date
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="date_range" class="form-label">Date</label>
+                    <input type="text" id="date_range" name="date_range" class="form-control" placeholder="Select date or range" autocomplete="off" value="{% if default_start_date and default_end_date %}{{ default_start_date }} to {{ default_end_date }}{% elif date_filter %}{{ date_filter }}{% endif %}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="w-100">
+                        <label for="rows_per_page" class="form-label">Rows per page</label>
+                        <select id="rows_per_page" class="form-select">
+                            {% for option in [50, 100, 500, 1000] %}
+                                <option value="{{ option }}" {% if rows_per_page == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jainam Records Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3><strong>Jainam UserID</strong></h3>
+        </div>
+        <div class="card-body table-container">
+            <table class="table table-striped table-hover">
+                <thead style="position: sticky; top: 0; z-index: 2; background: #fff;">
+                    <tr>
+                        <th data-column="0" class="sortable" onclick="sortColumn('Date', 0)">
+                            <div class="d-flex align-items-center">
+                                <span>Date</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-0"></div>
+                                    <div class="sort-icon down" id="sort-down-0"></div>
+                                </div>
+                            </div>
+                        </th>
+                        <th data-column="1" class="sortable" onclick="sortColumn('User ID', 1)">
+                            <div class="d-flex align-items-center">
+                                <span>User ID</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-1"></div>
+                                    <div class="sort-icon down" id="sort-down-1"></div>
+                                </div>
+                            </div>
+                        </th>
+                        <th data-column="2" class="sortable" onclick="sortColumn('Alias', 2)">
+                            <div class="d-flex align-items-center">
+                                <span>Alias</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-2"></div>
+                                    <div class="sort-icon down" id="sort-down-2"></div>
+                                </div>
+                            </div>
+                        </th>
+                        <th data-column="3" class="sortable" onclick="sortColumn('Allocation', 3)">
+                            <div class="d-flex align-items-center">
+                                <span>Allocation</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-3"></div>
+                                    <div class="sort-icon down" id="sort-down-3"></div>
+                                </div>
+                            </div>
+                        </th>
+                        <th data-column="4" class="sortable" onclick="sortColumn('MTM', 4)">
+                            <div class="d-flex align-items-center">
+                                <span>MTM</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-4"></div>
+                                    <div class="sort-icon down" id="sort-down-4"></div>
+                                </div>
+                            </div>
+                        </th>
+                        <th data-column="5" class="sortable" onclick="sortColumn('Max Loss', 5)">
+                            <div class="d-flex align-items-center">
+                                <span>Max Loss</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-5"></div>
+                                    <div class="sort-icon down" id="sort-down-5"></div>
+                                </div>
+                            </div>
+                        </th>
+                        <th data-column="6" class="sortable" onclick="sortColumn('Algo', 6)">
+                            <div class="d-flex align-items-center">
+                                <span>Algos</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-6"></div>
+                                    <div class="sort-icon down" id="sort-down-6"></div>
+                                </div>
+                            </div>
+                        </th>
+                        <th data-column="7" class="sortable" onclick="sortColumn('Broker', 7)">
+                            <div class="d-flex align-items-center">
+                                <span>Broker</span>
+                                <div class="sort-icons ms-2">
+                                    <div class="sort-icon up" id="sort-up-7"></div>
+                                    <div class="sort-icon down" id="sort-down-7"></div>
+                                </div>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="jainam-table-body">
+                    {% if jainam %}
+                        {% for record in jainam %}
+                        <tr>
+                            <td>{{ record.date }}</td>
+                            <td><a href="{{ url_for('jainam.user_details', row_id=record.row_id) }}">{{ record.user_id }}</a></td>
+                            <td>{{ record.alias }}</td>
+                            <td>{{ (record.allocation|default(0)|float)|round(2) }}</td>
+                            <td>{{ (record.MTM|default(0)|float)|round(2) }}</td>
+                            <td>{{ (record.max_loss|default(0)|float)|round(2) }}</td>
+                            <td>{{ record.algo }}</td>
+                            <td>{{ record.broker }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center">No data available</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center" id="pagination">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="#" onclick="changePage(1)">«</a>
+                    </li>
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="#" onclick="changePage({{ page - 1 }})">‹</a>
+                    </li>
+                    {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="#" onclick="changePage({{ page - 1 }})">{{ page - 1 }}</a>
+                        </li>
+                    {% endif %}
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ page }}</a>
+                    </li>
+                    {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="#" onclick="changePage({{ page + 1 }})">{{ page + 1 }}</a>
+                        </li>
+                    {% endif %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="#" onclick="changePage({{ page + 1 }})">›</a>
+                    </li>
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="#" onclick="changePage({{ total_pages }})">»</a>
+                    </li>
+                </ul>
+                <span id="page-info" class="ms-2">Page {{ page }} of {{ total_pages }} ({{ jainam|length }} / {{ total_results }} rows)</span>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    // Debounce function to prevent rapid AJAX calls
+    function debounce(func, wait) {
+        let timeout;
+        return function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(func, wait);
+        };
+    }
+
+    // Sorting state
+    let currentSort = { column: null, direction: 'asc' };
+    let tableData = [];
+    let currentPage = {{ page|default(1) }};
+    let totalPages = {{ total_pages|default(1) }};
+    let totalResults = {{ total_results|default(0) }};
+
+    // Utility function to compare values for sorting
+    function compareValues(a, b, column) {
+        // Map column names to object property keys
+        const columnMap = {
+            'Date': 'date',
+            'User ID': 'user_id',
+            'Alias': 'alias',
+            'Allocation': 'allocation',
+            'MTM': 'MTM',
+            'Max Loss': 'max_loss',
+            'Algo': 'algo',
+            'Broker': 'broker'
+        };
+        let key = columnMap[column] || column.toLowerCase().replace(' ', '_');
+        let valA = a[key] || '';
+        let valB = b[key] || '';
+        if (column === 'Allocation' || column === 'MTM' || column === 'Max Loss' || column === 'Algo') {
+            valA = parseFloat(valA) || 0;
+            valB = parseFloat(valB) || 0;
+        } else if (column === 'Date') {
+            valA = valA ? new Date(valA) : new Date(0);
+            valB = valB ? new Date(valB) : new Date(0);
+        } else {
+            valA = valA.toString().toLowerCase();
+            valB = valB.toString().toLowerCase();
+        }
+        if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+        return 0;
+    }
+
+    // Sort table
+    function sortColumn(column, columnIndex) {
+        if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = column;
+            currentSort.direction = 'asc';
+        }
+
+        // Sort the stored data
+        tableData.sort((a, b) => compareValues(a, b, column));
+
+        // Update table body
+        const tableBody = document.getElementById('jainam-table-body');
+        tableBody.innerHTML = '';
+        const currentRows = tableData.length;
+        if (currentRows) {
+            tableData.forEach(record => {
+                const html = `
+                    <tr>
+                        <td>${record.date || ''}</td>
+                        <td><a href="${record.user_details_url}">${record.user_id}</a></td>
+                        <td>${record.alias || ''}</td>
+                        <td>${parseFloat(record.allocation || 0).toFixed(2)}</td>
+                        <td>${parseFloat(record.MTM || 0).toFixed(2)}</td>
+                        <td>${parseFloat(record.max_loss || 0).toFixed(2)}</td>
+                        <td>${record.algo || ''}</td>
+                        <td>${record.broker || ''}</td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', html);
+            });
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No data available</td></tr>';
+        }
+
+        // Update sort indicators
+        document.querySelectorAll('.sort-icon').forEach(icon => icon.classList.remove('active'));
+        const activeIcon = currentSort.direction === 'asc' ?
+            document.getElementById(`sort-up-${columnIndex}`) :
+            document.getElementById(`sort-down-${columnIndex}`);
+        if (activeIcon) activeIcon.classList.add('active');
+
+        // Update page info
+        $('#page-info').text(`Page ${currentPage} of ${totalPages} (${currentRows} / ${totalResults} rows)`);
+    }
+
+    // Update table via AJAX
+    function changePage(page) {
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+
+        const dateRange = document.getElementById('date_range').value.split(' to ');
+        const date_filter = dateRange.length === 1 ? dateRange[0] : '';
+        const start_date = dateRange.length > 1 ? dateRange[0] : '';
+        const end_date = dateRange.length > 1 ? dateRange[1] : '';
+        const rows_per_page = document.getElementById('rows_per_page').value;
+
+        $.ajax({
+            url: "{{ url_for('jainam.view_table') }}",
+            type: "GET",
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: {
+                start_date: start_date,
+                end_date: end_date,
+                date: date_filter,
+                rows_per_page: rows_per_page,
+                page: page
+            },
+            success: function(response) {
+                // Store data for sorting
+                tableData = response.jainam || [];
+                totalPages = response.total_pages || 1;
+                currentPage = response.page || 1;
+                totalResults = response.total_results || tableData.length;
+
+                // Update table body
+                const tableBody = $('#jainam-table-body');
+                tableBody.empty();
+                const currentRows = tableData.length;
+                if (currentRows) {
+                    tableData.forEach(record => {
+                        let html = `<tr>`;
+                        html += `<td>${record.date || ''}</td>`;
+                        html += `<td><a href="${record.user_details_url}">${record.user_id}</a></td>`;
+                        html += `<td>${record.alias || ''}</td>`;
+                        html += `<td>${parseFloat(record.allocation || 0).toFixed(2)}</td>`;
+                        html += `<td>${parseFloat(record.MTM || 0).toFixed(2)}</td>`;
+                        html += `<td>${parseFloat(record.max_loss || 0).toFixed(2)}</td>`;
+                        html += `<td>${record.algo || ''}</td>`;
+                        html += `<td>${record.broker || ''}</td>`;
+                        html += `</tr>`;
+                        tableBody.append(html);
+                    });
+                } else {
+                    tableBody.append('<tr><td colspan="8" class="text-center">No data available</td></tr>');
+                }
+
+                // Update pagination
+                const paginationContainer = $('#pagination');
+                paginationContainer.empty();
+                let paginationHtml = '';
+                paginationHtml += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">`;
+                paginationHtml += `<a class="page-link" href="#" onclick="changePage(1)">«</a></li>`;
+                paginationHtml += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">`;
+                paginationHtml += `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">‹</a></li>`;
+                if (currentPage > 1) {
+                    paginationHtml += `<li class="page-item">`;
+                    paginationHtml += `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})">${currentPage - 1}</a></li>`;
+                }
+                paginationHtml += `<li class="page-item active">`;
+                paginationHtml += `<a class="page-link" href="#">${currentPage}</a></li>`;
+                if (currentPage < totalPages) {
+                    paginationHtml += `<li class="page-item">`;
+                    paginationHtml += `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">${currentPage + 1}</a></li>`;
+                }
+                paginationHtml += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">`;
+                paginationHtml += `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})">›</a></li>`;
+                paginationHtml += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">`;
+                paginationHtml += `<a class="page-link" href="#" onclick="changePage(${totalPages})">»</a></li>`;
+                paginationContainer.append(paginationHtml);
+
+                // Update page info
+                $('#page-info').text(`Page ${currentPage} of ${totalPages} (${currentRows} / ${totalResults} rows)`);
+
+                // Update export and dashboard links
+                const queryParams = `start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&date=${encodeURIComponent(date_filter)}`;
+                $('#export-csv').attr('href', "{{ url_for('jainam.export_csv') }}?" + queryParams);
+                $('#dashboard-link').attr('href', "{{ url_for('jainam.dashboard') }}?" + queryParams);
+
+                // Apply sorting if a sort state exists
+                if (currentSort.column) {
+                    sortColumn(currentSort.column, Array.from(document.querySelectorAll('th')).findIndex(
+                        th => th.querySelector('span')?.textContent === currentSort.column
+                    ));
+                }
+            },
+            error: function(xhr) {
+                alert('Error loading data: ' + (xhr.responseJSON?.error || 'Unknown error'));
+            }
+        });
+    }
+
+    // Initialize Flatpickr and event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        flatpickr("#date_range", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            defaultDate: ["{{ default_start_date }}", "{{ default_end_date }}"],
+            onChange: function(selectedDates) {
+                currentPage = 1;
+                changePage(1);
+            }
+        });
+
+        const debouncedUpdateTable = debounce(changePage, 300);
+        document.getElementById('rows_per_page').addEventListener('change', function() {
+            currentPage = 1;
+            changePage(1);
+        });
+
+        // Drag and drop functionality
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const fileCountDisplay = document.getElementById('file-count');
+
+        function updateFileCount() {
+            const fileCount = fileInput.files.length;
+            fileCountDisplay.textContent = fileCount > 0 ? `${fileCount} file${fileCount > 1 ? 's' : ''} selected` : 'No files selected';
+        }
+
+        fileInput.addEventListener('change', updateFileCount);
+
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                fileInput.files = files;
+                updateFileCount();
+            }
+        });
+
+        // Initial load
+        changePage(1);
+    });
+</script>
+{% endblock %}

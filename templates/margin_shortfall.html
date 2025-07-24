@@ -1,0 +1,546 @@
+{% extends 'base.html' %}
+{% block title %}Margin Shortfall Analysis{% endblock %}
+{% block content %}
+<!-- Margin Shortfall-Specific CSS -->
+<style>
+    :root {
+        --primary-color: #007bff;
+        --secondary-color: #6c757d;
+        --success-color: #28a745;
+        --sidebar-bg: #f8f9fa;
+        --card-bg: #ffffff;
+        --text-color: #333;
+        --table-border: #dee2e6;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --font-size-base: 1rem; /* Base font size for scalability */
+        --font-size-table: 1.1rem; /* Larger table font size */
+        --font-size-heading: 1.8rem; /* Larger heading font size */
+        --table-cell-padding: 0.75rem; /* Increased cell padding */
+        --input-border: #ced4da; /* Border color for inputs */
+        --input-bg: #ffffff; /* Background for inputs */
+    }
+
+    .dark-theme {
+        --primary-color: #1a73e8;
+        --secondary-color: #5a6268;
+        --success-color: #218838;
+        --sidebar-bg: #212529;
+        --card-bg: #343a40;
+        --text-color: #f8f9fa;
+        --table-border: #495057;
+        --shadow-color: rgba(255, 255, 255, 0.1);
+        --input-border: #6c757d; /* Dark theme input border */
+        --input-bg: #495057; /* Dark theme input background */
+    }
+
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        font-size: var(--font-size-base);
+        transition: all 0.3s ease;
+    }
+
+    .enhanced-card {
+        background-color: var(--card-bg);
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px var(--shadow-color);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-bottom: 1.5rem;
+    }
+
+    .enhanced-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 16px var(--shadow-color);
+    }
+
+    .enhanced-card .card-body {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .enhanced-card h3 {
+        font-size: var(--font-size-heading);
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-color);
+    }
+
+    .enhanced-card p {
+        font-size: calc(var(--font-size-base) * 0.9);
+        color: var(--secondary-color);
+        margin: 0;
+    }
+
+    .enhanced-card .button-group {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-grd-primary {
+        background: linear-gradient(90deg, var(--primary-color), #0056b3);
+        color: #fff;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-size: calc(var(--font-size-base) * 0.95);
+        font-weight: 500;
+        transition: background 0.3s ease;
+    }
+
+    .btn-grd-primary:hover {
+        background: linear-gradient(90deg, #0056b3, var(--primary-color));
+    }
+
+    .btn-grd-success {
+        background: linear-gradient(90deg, var(--success-color), #1e7e34);
+        color: #fff;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-size: calc(var(--font-size-base) * 0.95);
+        font-weight: 500;
+        transition: background 0.3s ease;
+    }
+
+    .btn-grd-success:hover {
+        background: linear-gradient(90deg, #1e7e34, var(--success-color));
+    }
+
+    .btn-grd-success:disabled {
+        background: var(--secondary-color);
+        cursor: not-allowed;
+        opacity: 0.65;
+    }
+
+    .btn-grd-success.loading {
+        background: var(--secondary-color);
+        cursor: wait;
+        position: relative;
+    }
+
+    .btn-grd-success.loading::after {
+        content: '';
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+        margin-left: 8px;
+        vertical-align: middle;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .export-note {
+        font-size: calc(var(--font-size-base) * 0.85);
+        color: var(--secondary-color);
+        margin-top: 0.5rem;
+    }
+
+    .table-responsive {
+        max-height: 500px; /* Reduced max-height for better fit */
+        overflow-x: auto;
+        overflow-y: auto;
+        margin-top: 1rem; /* Reduced margin for tighter layout */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
+    }
+
+    .table-smaller {
+        font-size: var(--font-size-table);
+        width: 100%;
+        color: var(--text-color);
+        border-collapse: collapse;
+        table-layout: auto; /* Allows columns to adjust based on content */
+    }
+
+    .table-smaller th,
+    .table-smaller td {
+        padding: var(--table-cell-padding);
+        border: 1px solid var(--table-border);
+        text-align: left;
+        white-space: nowrap; /* Prevent text wrapping for better readability */
+    }
+
+    .table-smaller th {
+        background-color: var(--primary-color);
+        color: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table-smaller tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .table-smaller tr:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .content {
+        margin-left: 80px; /* Reduced margin to minimize space between sidebar and content */
+        padding: 15px; /* Slightly reduced padding for tighter layout */
+        transition: margin-left 0.3s ease-out;
+        min-height: 100vh;
+    }
+
+    /* Date Input Styling */
+    input[type="date"] {
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--input-border);
+        border-radius: 8px;
+        font-size: calc(var(--font-size-base) * 0.95);
+        color: var(--text-color);
+        background-color: var(--input-bg);
+        width: 180px; /* Default width */
+        transition: border-color 0.3s ease, background-color 0.3s ease;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    input[type="date"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+    }
+
+    /* Webkit-specific styling for date picker icon */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(0.5) brightness(1.2); /* Adjust icon for light theme */
+        cursor: pointer;
+    }
+
+    .dark-theme input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1); /* Adjust icon for dark theme */
+    }
+
+    /* Responsive Design */
+    @media only screen and (max-width: 1199px) {
+        .content {
+            margin-left: 60px; /* Further reduced margin for medium screens */
+        }
+        .sidebar {
+            width: 60px;
+        }
+        .sidebar .menu-title {
+            display: none;
+        }
+        .table-smaller {
+            font-size: calc(var(--font-size-table) * 0.9); /* Slightly smaller font on medium screens */
+        }
+        .enhanced-card h3 {
+            font-size: calc(var(--font-size-heading) * 0.9);
+        }
+        input[type="date"] {
+            width: 160px; /* Slightly smaller width for medium screens */
+            font-size: calc(var(--font-size-base) * 0.9);
+        }
+    }
+
+    @media only screen and (max-width: 767px) {
+        .content {
+            margin-left: 0; /* No margin on mobile to maximize space */
+            padding: 10px;
+        }
+        .sidebar {
+            width: 50px;
+        }
+        .table-responsive {
+            max-height: 400px; /* Smaller max-height for mobile */
+        }
+        .table-smaller {
+            font-size: calc(var(--font-size-table) * 0.8); /* Smaller font on mobile */
+        }
+        .table-smaller th,
+        .table-smaller td {
+            padding: calc(var(--table-cell-padding) * 0.7); /* Reduced padding on mobile */
+        }
+        .enhanced-card h3 {
+            font-size: calc(var(--font-size-heading) * 0.8);
+        }
+        .btn-grd-primary, .btn-grd-success {
+            padding: 0.5rem 1rem;
+            font-size: calc(var(--font-size-base) * 0.85);
+        }
+        input[type="date"] {
+            width: 100%; /* Full width on mobile for better usability */
+            max-width: 140px; /* Cap width to prevent overflow */
+            font-size: calc(var(--font-size-base) * 0.85);
+            padding: 0.5rem 0.7rem;
+        }
+        .button-group {
+            flex-direction: column; /* Stack buttons gledeform items vertically on mobile */
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+
+    @media screen and (min-width: 1220px) {
+        body.toggled:not(.sidebar-hovered) .content {
+            margin-left: 70px; /* Adjusted for toggled sidebar */
+        }
+        body.toggled:not(.sidebar-hovered) .sidebar {
+            width: 60px;
+        }
+        body.toggled:not(.sidebar-hovered) .sidebar .menu-title {
+            display: none;
+        }
+    }
+</style>
+
+<!-- Main Content -->
+<div class="content">
+    <div class="card enhanced-card">
+        <div class="card-body">
+            <h3>Analyze Margin Shortfall</h3>
+            <p>Select a date to analyze margin shortfall data or export the results to Excel.</p>
+            <div class="button-group" style="display: flex; align-items: center; gap: 1rem;">
+                <form id="dateSelectionForm" action="{{ url_for('margin.margin_shortfall_page') }}" method="POST" style="display: flex; align-items: center;">
+                    <input type="date" id="trade_date" name="trade_date" value="{{ trade_date or '' }}" required style="margin-right: 0.5rem;">
+                    <button type="submit" name="analyze" class="btn btn-grd-primary">Analyze</button>
+                </form>
+                <form id="exportForm" method="POST" action="{{ url_for('margin.margin_shortfall_page') }}">
+                    <input type="hidden" name="export" value="xlsx">
+                    <input type="hidden" name="trade_date" value="{{ trade_date or '' }}">
+                    <input type="hidden" name="session_id" value="{{ session.get('session_id', '') }}">
+                    <button type="submit" id="exportButton" class="btn btn-grd-success" 
+                            {{ '' if result_data and pivot_data and result_data|length > 0 and pivot_data|length > 0 else 'disabled' }} 
+                            title="{{ 'Export margin shortfall data to Excel' if result_data and pivot_data and result_data|length > 0 and pivot_data|length > 0 else 'No data available to export' }}">
+                        Export to Excel
+                    </button>
+                </form>
+            </div>
+            <p class="export-note">
+                {% if result_data and pivot_data and result_data|length > 0 and pivot_data|length > 0 %}
+                    Exports to Excel with sheets: "Margin Shortfall Summary" and "Detailed Shortfall Records"
+                {% else %}
+                    No data available. Please analyze data first to enable export.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages mb-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Display Pivot Table (Summary) -->
+    <div class="card mb-4 compact-card">
+        <div class="card-body">
+            <h3 class="card-title">Margin Shortfall Summary</h3>
+            {% if pivot_data and pivot_data|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered table-smaller">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>User ID</th>
+                                {% if pivot_data[0].ALGO is defined %}
+                                    <th>ALGO</th>
+                                {% endif %}
+                                {% if pivot_data[0].SERVER is defined %}
+                                    <th>SERVER</th>
+                                {% endif %}
+                                {% for key in pivot_data[0].keys() if key not in ['User ID', 'ALGO', 'SERVER', 'Margin Shortfall_Total', 'Margin Shortfall Rejections'] %}
+                                    <th>{{ key.replace('_', ' ').title() }}</th>
+                                {% endfor %}
+                                <th>Margin Shortfall Rejections</th>
+                                <th>Margin Shortfall Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in pivot_data %}
+                                <tr>
+                                    <td>{{ row['User ID'] }}</td>
+                                    {% if row.ALGO is defined %}
+                                        <td>{{ row.ALGO }}</td>
+                                    {% endif %}
+                                    {% if row.SERVER is defined %}
+                                        <td>{{ row.SERVER }}</td>
+                                    {% endif %}
+                                    {% for key, value in row.items() if key not in ['User ID', 'ALGO', 'SERVER', 'Margin Shortfall_Total', 'Margin Shortfall Rejections'] %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                    <td>{{ row['Margin Shortfall Rejections'] }}</td>
+                                    <td>{{ row['Margin Shortfall_Total'] | round(2) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: bold;">
+                                <td colspan="
+                                    {{ 1 + (1 if pivot_data[0].ALGO is defined else 0) + (1 if pivot_data[0].SERVER is defined else 0) }}
+                                ">Total</td>
+                                {% set skip_keys = ['User ID', 'ALGO', 'SERVER', 'Margin Shortfall_Total', 'Margin Shortfall Rejections'] %}
+                                {% for key in pivot_data[0].keys() if key not in skip_keys %}
+                                    <td>
+                                        {% set total = pivot_data | sum(attribute=key) %}
+                                        {% if total is number %}
+                                            {{ total | round(2) }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td>
+                                    {% set total_rej = pivot_data | sum(attribute='Margin Shortfall Rejections') %}
+                                    {{ total_rej }}
+                                </td>
+                                <td>
+                                    {% set total_sum = pivot_data | sum(attribute='Margin Shortfall_Total') %}
+                                    {{ total_sum | round(2) }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            {% else %}
+                <p class="card-text">No summary data available. Please select a date and analyze.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Display Detailed Shortfall Table (Details) -->
+    <div class="card compact-card">
+        <div class="card-body">
+            <h3 class="card-title">Detailed Shortfall Records</h3>
+            {% if result_data and result_data|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered table-smaller">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>User ID</th>
+                                <th>Margin Shortfall</th>
+                                <th>Margin Shortfall Total</th>
+                                <th>Available Margin</th>
+                                <th>MTM (All)</th>
+                                <th>ALLOCATION</th>
+                                <th>MAXLOSS</th>
+                                <th>Order Time</th>
+                                <th>Alias</th>
+                                <th>Broker</th>
+                                <th>Exchange</th>
+                                <th>Order Date</th>
+                                {% if result_data[0].ALGO is defined %}
+                                    <th>ALGO</th>
+                                {% endif %}
+                                {% if result_data[0].SERVER is defined %}
+                                    <th>SERVER</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result_data %}
+                                <tr>
+                                    <td>{{ row['User ID'] }}</td>
+                                    <td>{{ row['Margin Shortfall'] | round(2) }}</td>
+                                    <td>{{ row['Margin Shortfall_Total'] | round(2) }}</td>
+                                    <td>{{ row['Available Margin'] | round(2) if row['Available Margin'] is float else row['Available Margin'] }}</td>
+                                    <td>{{ row['MTM (All)'] | round(2) if row['MTM (All)'] is float else row['MTM (All)'] }}</td>
+                                    <td>{{ row['ALLOCATION'] | round(2) if row['ALLOCATION'] is float else row['ALLOCATION'] }}</td>
+                                    <td>{{ row['MAXLOSS'] | round(2) if row['MAXLOSS'] is float else row['MAXLOSS'] }}</td>
+                                    <td>{{ row['Order Time'] }}</td>
+                                    <td>{{ row['Alias'] }}</td>
+                                    <td>{{ row['Broker'] }}</td>
+                                    <td>{{ row['Exchange'] }}</td>
+                                    <td>{{ row['Order Date'] }}</td>
+                                    {% if row.ALGO is defined %}
+                                        <td>{{ row.ALGO }}</td>
+                                    {% endif %}
+                                    {% if row.SERVER is defined %}
+                                        <td>{{ row.SERVER }}</td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="card-text">No detailed shortfall records available. Please select a date and analyze.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', function () {
+                document.body.classList.toggle('dark-theme');
+                if (document.body.classList.contains('dark-theme')) {
+                    themeToggle.classList.remove('fa-sun');
+                    themeToggle.classList.add('fa-moon');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    themeToggle.classList.remove('fa-moon');
+                    themeToggle.classList.add('fa-sun');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-theme');
+                themeToggle.classList.remove('fa-sun');
+                themeToggle.classList.add('fa-moon');
+            }
+        }
+
+        // Sidebar Toggle
+        const sidebar = document.querySelector('.sidebar');
+        const content = document.querySelector('.content');
+        if (sidebar && content) {
+            sidebar.addEventListener('mouseenter', () => {
+                document.body.classList.add('sidebar-hovered');
+            });
+            sidebar.addEventListener('mouseleave', () => {
+                document.body.classList.remove('sidebar-hovered');
+            });
+        }
+
+        // Initialize Bootstrap Tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Export Button Handling
+        const exportForm = document.getElementById('exportForm');
+        const exportButton = document.getElementById('exportButton');
+        if (exportForm && exportButton) {
+            exportForm.addEventListener('submit', function (event) {
+                event.preventDefault(); // Prevent native submission
+                exportButton.classList.add('loading');
+                exportButton.disabled = true;
+                exportButton.setAttribute('aria-disabled', 'true');
+                exportForm.submit();
+                setTimeout(() => {
+                    exportButton.classList.remove('loading');
+                    exportButton.disabled = false;
+                    exportButton.setAttribute('aria-disabled', 'false');
+                }, 800); // 2-second delay
+            });
+        }
+    });
+</script>
+{% endblock %}

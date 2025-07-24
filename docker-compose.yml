@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Welcome987
+      MYSQL_DATABASE: mst
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  flask:
+    build: .
+    container_name: flask-app
+    restart: always
+    depends_on:
+      - mysql
+    ports:
+      - "8000:8000"
+    environment:
+      FLASK_ENV: development
+      FLASK_APP: run_app.py
+      DB_USER: root
+      DB_PASSWORD: Welcome987
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: mst
+    volumes:
+      - .:/app
+    command: python -m waitress --port=8000 run_app:app
+
+
+volumes:
+  mysql_data:

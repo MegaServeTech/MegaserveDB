@@ -1,0 +1,1108 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<!-- Embed Dashboard-Specific CSS -->
+<style>
+    :root {
+        --primary-color: #4e73df;
+        --secondary-color: #858796;
+        --success-color: #1cc88a;
+        --info-color: #36b9cc;
+        --warning-color: #f6c23e;
+        --danger-color: #e74a3b;
+        --light-color: #f8f9fc;
+        --dark-color: #5a5c69;
+        --sidebar-bg: #3a3b45;
+        --card-bg: #ffffff;
+        --text-color: #333;
+    }
+
+    .dark-theme {
+        --primary-color: #3758e6;
+        --secondary-color: #adb5bd;
+        --success-color: #17a673;
+        --info-color: #2c9faf;
+        --warning-color: #d4a017;
+        --danger-color: #c82333;
+        --light-color: #212529;
+        --dark-color: #adb5bd;
+        --sidebar-bg: #212529;
+        --card-bg: #343a40;
+        --text-color: #e9ecef;
+    }
+
+    body {
+        background-color: var(--light-color);
+        color: var(--text-color);
+        font-family: 'Nunito', sans-serif;
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+    .main-content {
+        padding: 20px;
+        margin-left: 26px;
+        transition: margin-left 0.3s ease-out;
+    }
+
+    .filter-container {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .form-select, .btn {
+        border-radius: 5px;
+        transition: all 0.3s;
+    }
+
+    .form-select:focus, .btn:focus {
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+
+    .card {
+        background-color: var(--card-bg);
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        margin-bottom: 20px;
+        transition: transform 0.3s;
+        position: relative;
+        z-index: 1;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+    }
+
+    .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid #e3e6f0;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+        margin: 0;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+        color: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        transition: transform 0.3s;
+    }
+
+    .stat-card.success {
+        background: linear-gradient(135deg, var(--success-color), #17a673);
+    }
+
+    .stat-card.warning {
+        background: linear-gradient(135deg, var(--warning-color), #e57031);
+    }
+
+    .stat-card.danger {
+        background: linear-gradient(135deg, var(--danger-color), #bf3c49);
+    }
+
+    .stat-card.info {
+        background: linear-gradient(135deg, var(--info-color), #2c9faf);
+    }
+
+    .stat-card.algo {
+        background: linear-gradient(135deg, var(--secondary-color), #9f9595);
+    }
+    .stat-card.aum {
+        background: linear-gradient(135deg, #af8cbd, #9b79a8);
+    }
+    
+    .stat-card.winrate {
+        background: linear-gradient(135deg, #89c07b, #629f76);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stat-card i {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+
+    .stat-card h3 {
+        font-size: 1.5rem;
+        margin: 0;
+    }
+
+    .stat-card p {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .table {
+        margin-bottom: 0;
+        color: var(--text-color);
+    }
+
+    .table th {
+        background-color: var(--primary-color);
+        color: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table td {
+        padding: 12px;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .scrollable-table-container {
+        max-height: 300px;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .scrollable-user-table-container {
+        max-height: 200px;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .user-table th, .user-table td {
+        padding: 12px;
+        text-align: left;
+        min-width: 120px;
+    }
+
+    .server-filter-dropdown {
+        max-height: 300px;
+        overflow-y: auto;
+        width: 200px;
+        z-index: 1050;
+    }
+
+    .server-checkbox {
+        display: block;
+        padding: 5px 10px;
+    }
+
+    .server-filter-button {
+        min-width: 150px;
+        text-align: left;
+    }
+
+    .dropdown-menu {
+        padding: 0;
+        z-index: 1050;
+    }
+
+    .badge {
+        font-size: 0.9rem;
+        padding: 5px 10px;
+    }
+
+    .export-btn {
+        margin-left: 10px;
+    }
+
+    #loading-spinner {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2000;
+        display: none;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        width: 100%;
+    }
+
+    .date-range-picker {
+        position: relative;
+    }
+
+    .date-range-picker input {
+        width: 200px;
+        padding-right: 30px;
+    }
+
+    .date-range-picker .calendar-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-color);
+    }
+
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+    }
+
+    @media only screen and (max-width: 1199px) {
+        .main-content {
+            margin-left: 0;
+        }
+    }
+
+    @media screen and (min-width: 1220px) {
+        body.toggled:not(.sidebar-hovered) .main-content {
+            margin-left: 70px;
+        }
+    }
+
+    @media only screen and (max-width: 768px) {
+        .stat-card {
+            margin-bottom: 15px;
+        }
+
+        .filter-container {
+            flex-wrap: wrap;
+        }
+
+        .server-filter-button {
+            width: 100%;
+        }
+
+        .dte-filter-container {
+            flex-wrap: wrap;
+        }
+
+        .date-range-picker {
+            width: 100%;
+        }
+
+        .date-range-picker input {
+            width: 100%;
+        }
+    }
+</style>
+
+<!-- Font Awesome for Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<!-- Flatpickr CSS for Date Picker -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<!-- Chart.js for MTM vs Day Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Flatpickr JS for Date Picker -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- Main Content -->
+<div class="main-content">
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container"></div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% else %}
+        <!-- Summary Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Summary ({{ date_display }})</h5>
+                <div class="filter-container">
+                    <!-- DTE Filter Dropdown -->
+                    <select id="dteFilter" class="form-select" onchange="updateDTEFilter()">
+                        <option value="Overall" {% if not dte_filter %}selected{% endif %}>Overall</option>
+                        {% for dte in unique_dtes %}
+                            <option value="{{ dte }}" {% if dte_filter == dte %}selected{% endif %}>{{ dte }}</option>
+                        {% endfor %}
+                    </select>
+                    <!-- Time Period Filter -->
+                    <select id="timePeriodFilter" class="form-select" onchange="updateTimePeriod()">
+                        <option value="Last Day" {% if time_period == 'Last Day' %}selected{% endif %}>Last Day</option>
+                        <option value="Yesterday" {% if time_period == 'Yesterday' %}selected{% endif %}>Yesterday</option>
+                        <option value="Today" {% if time_period == 'Today' %}selected{% endif %}>Today</option>
+                        <option value="Last Week" {% if time_period == 'Last Week' %}selected{% endif %}>Last Week</option>
+                        <option value="Last Month" {% if time_period == 'Last Month' %}selected{% endif %}>Last Month</option>
+                        <option value="6 Months" {% if time_period == '6 Months' %}selected{% endif %}>6 Months</option>
+                        <option value="1 Year" {% if time_period == '1 Year' %}selected{% endif %}>1 Year</option>
+                        <option value="2 Years" {% if time_period == '2 Years' %}selected{% endif %}>2 Years</option>
+                        <option value="Custom" {% if time_period == 'Custom' %}selected{% endif %}>Custom</option>
+                    </select>
+                    <!-- Custom Date Range Picker -->
+                    <div class="date-range-picker" id="dateRangePickerContainer" style="{% if time_period != 'Custom' %}display: none;{% endif %}">
+                        <input type="text" id="dateRangePicker" class="form-control" placeholder="Select date range">
+                        <i class="fas fa-calendar-alt calendar-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card" data-bs-toggle="tooltip" title="Total number of unique users">
+                            <i class="fas fa-users"></i>
+                            <h3>{{ num_users }}</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card algo" data-bs-toggle="tooltip" title="Total number of unique algos">
+                            <i class="fas fa-cogs"></i>
+                            <h3>{{ num_algos }}</h3>
+                            <p>Total Algo</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card warning" data-bs-toggle="tooltip" title="Total number of unique servers">
+                            <i class="fas fa-server"></i>
+                            <h3>{{ unique_server_count }}</h3>
+                            <p>Total Servers</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card success" data-bs-toggle="tooltip" title="Total MTM / Total Allocation (%)">
+                            <i class="fas fa-chart-line"></i>
+                            <h3>{{ total_return_percent }}%</h3>
+                            <p>Total Return %</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trading Statistics Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Trading Statistics ({{ date_display }})</h5>
+                <div class="filter-container">
+                    <select id="userIdFilter" class="form-select" onchange="updateTotalMTMFilters()">
+                        <option value="All Users" {% if selected_user_id == 'All Users' %}selected{% endif %}>All Users</option>
+                        {% for user_id in all_user_ids %}
+                            <option value="{{ user_id }}" {% if selected_user_id == user_id %}selected{% endif %}>{{ user_id }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="totalMTMAlgoFilter" class="form-select">
+                        <option value="All Algos" {% if total_mtm_algo == 'All Algos' %}selected{% endif %}>All Algos</option>
+                        {% for algo in unique_algos %}
+                            <option value="{{ algo }}" {% if total_mtm_algo == algo %}selected{% endif %}>{{ algo }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary server-filter-button dropdown-toggle" type="button" id="totalMTMServerFilterButton" data-bs-toggle="dropdown" aria-expanded="false">
+                            {% if total_mtm_servers %}
+                                {{ total_mtm_servers|join(', ') }}
+                            {% else %}
+                                All Servers
+                            {% endif %}
+                        </button>
+                        <ul class="dropdown-menu server-filter-dropdown" id="totalMTMServerDropdown" aria-labelledby="totalMTMServerFilterButton">
+                            <!-- Populated dynamically via JavaScript -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <div class="stat-card" data-bs-toggle="tooltip" title="Total Mark-to-Market value for selected user(s), algo, and server(s)">
+                            <i class="fas fa-coins"></i>
+                            <h3>{{ total_mtm_value }}</h3>
+                            <p>Total MTM</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card info h-100 d-flex flex-column justify-content-center align-items-center" data-bs-toggle="tooltip" title="Total Assets Under Management (Sum of average allocation per user)">
+                            <i class="fas fa-wallet"></i>
+                            <h3>{{ total_aum }}</h3>
+                            <p>Total AUM</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card aum h-100 d-flex flex-column justify-content-center align-items-center" data-bs-toggle="tooltip" title="Total number of trading days in the selected period">
+                            <i class="fas fa-calendar-day"></i>
+                            <h3>{{ total_trading_days }}</h3>
+                            <p>Total Trading Days</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card danger h-100 d-flex flex-column justify-content-center align-items-center" data-bs-toggle="tooltip" title="Day with the lowest total MTM">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h3>{{ worst_trading_day.mtm if worst_trading_day else 'N/A' }}</h3>
+                            <p>Worst Trading Day<br>({{ worst_trading_day.date if worst_trading_day else 'N/A' }})</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="stat-card success h-100 d-flex flex-column justify-content-center align-items-center" data-bs-toggle="tooltip" title="Day with the highest total MTM">
+                            <i class="fas fa-trophy"></i>
+                            <h3>{{ best_trading_day.mtm if best_trading_day else 'N/A' }}</h3>
+                            <p>Best Trading Day<br>({{ best_trading_day.date if best_trading_day else 'N/A' }})</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Overview Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Performance Overview ({{ date_display }})</h5>
+                <button id="toggleChartBtn" class="btn btn-outline-primary btn-sm">Toggle to Bar Chart</button>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>MTM vs Day</h6>
+                        <div class="chart-container">
+                            <canvas id="mtmVsDayChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <div class="stat-card winrate" data-bs-toggle="tooltip" title="Percentage of days with positive MTM">
+                                    <i class="fas fa-percentage"></i>
+                                    <h3>{{ win_rate }}%</h3>
+                                    <p>Win Rate</p>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="stat-card warning" data-bs-toggle="tooltip" title="Gross Profits / Gross Losses">
+                                    <i class="fas fa-balance-scale"></i>
+                                    <h3>{{ profit_factor }}</h3>
+                                    <p>Profit Factor</p>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="stat-card warning" data-bs-toggle="tooltip" title="Loss Day / Total Trading Day">
+                                    <i class="fas fa-trophy"></i>
+                                    <h3>{{ win_day }}</h3>
+                                    <p>Total Win Day</p>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="stat-card info" data-bs-toggle="tooltip" title="Profit Day / Total Trading Day">
+                                    <i class="fas fa-thumbs-down"></i>
+                                    <h3>{{ loss_day }}</h3>
+                                    <p>Total Loss Day</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top/Least Performing Users Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Top and Least Performing Users ({{ date_display }})</h5>
+                <div class="filter-container">
+                    <select id="topLeastAlgoFilter" class="form-select">
+                        <option value="All Algos" {% if top_least_algo == 'All Algos' %}selected{% endif %}>All Algos</option>
+                        {% for algo in unique_algos %}
+                            <option value="{{ algo }}" {% if top_least_algo == algo %}selected{% endif %}>{{ algo }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary server-filter-button dropdown-toggle" type="button" id="topLeastServerFilterButton" data-bs-toggle="dropdown" aria-expanded="false">
+                            {% if top_least_servers %}
+                                {{ top_least_servers|join(', ') }}
+                            {% else %}
+                                All Servers
+                            {% endif %}
+                        </button>
+                        <ul class="dropdown-menu server-filter-dropdown" id="topLeastServerDropdown" aria-labelledby="topLeastServerFilterButton">
+                            <!-- Populated dynamically via JavaScript -->
+                        </ul>
+                    </div>
+                    <button class="btn btn-outline-success export-btn" onclick="exportTableToCSV('top-least-users', 'Top_Least_Users.csv')">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 col-sm-12 mb-3">
+                        <h6>Top 20% Users <span class="badge bg-primary">{{ top_users_count }}</span></h6>
+                        <div class="scrollable-user-table-container">
+                            <table class="table table-striped table-hover user-table" id="top-least-users">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Algo</th>
+                                        <th>Server</th>
+                                        <th>Return Ratio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if top_users is iterable and top_users is not none and top_users|length > 0 %}
+                                        {% for user in top_users %}
+                                            <tr>
+                                                <td>{{ user.user_id }}</td>
+                                                <td>{{ user.algo }}</td>
+                                                <td>{{ user.server }}</td>
+                                                <td>{{ user['Return Ratio'] }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="4">No top users data available</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-sm-12 mb-3">
+                        <h6>Least 20% Users <span class="badge bg-danger">{{ least_users_count }}</span></h6>
+                        <div class="scrollable-user-table-container">
+                            <table class="table table-striped table-hover user-table">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Algo</th>
+                                        <th>Server</th>
+                                        <th>Return Ratio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if least_users is iterable and least_users is not none and least_users|length > 0 %}
+                                        {% for user in least_users %}
+                                            <tr>
+                                                <td>{{ user.user_id }}</td>
+                                                <td>{{ user.algo }}</td>
+                                                <td>{{ user.server }}</td>
+                                                <td>{{ user['Return Ratio'] }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="4">No least users data available</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Report Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Detailed Report ({{ date_display }})</h5>
+                <div class="filter-container">
+                    <button class="btn btn-outline-success export-btn" onclick="exportTableToCSV('detailed-report', 'Detailed_Report.csv')">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="scrollable-table-container">
+                    <table class="table table-striped table-hover table-bordered" id="detailed-report">
+                        <thead>
+                            <tr>
+                                <th>ALGO</th>
+                                <th>SERVER</th>
+                                <th>No. of Users</th>
+                                <th>Sum of ALLOCATION</th>
+                                <th>Sum of MTM (All)</th>
+                                <th>Return Ratio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in final_df %}
+                                <tr>
+                                    <td>{{ row.ALGO }}</td>
+                                    <td>{{ row.SERVER }}</td>
+                                    <td>{{ row['No. of Users'] }}</td>
+                                    <td>{{ row['Sum of ALLOCATION'] }}</td>
+                                    <td>{{ row['Sum of MTM (All)'] }}</td>
+                                    <td>{{ row['Return Ratio'] }}</td>
+                                </tr>
+                            {% endfor %}
+                            <tr class="table-primary">
+                                <td>{{ grand_total.ALGO }}</td>
+                                <td>{{ grand_total.SERVER }}</td>
+                                <td>{{ grand_total['No. of Users'] }}</td>
+                                <td>{{ grand_total['Sum of ALLOCATION'] }}</td>
+                                <td>{{ grand_total['Sum of MTM (All)'] }}</td>
+                                <td>{{ grand_total['Return Ratio'] }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Dashboard-Specific JavaScript -->
+<script>
+    // Algo to Servers mapping from backend
+    const algoToServers = {{ algo_to_servers | tojson }};
+
+    // Initialize Flatpickr for Date Range Picker
+    let dateRangePicker;
+    document.addEventListener('DOMContentLoaded', function () {
+        dateRangePicker = flatpickr("#dateRangePicker", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            maxDate: "today",
+            minDate: "2020-01-01", // Optional: Set a reasonable minimum date
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2 && document.getElementById('timePeriodFilter').value === 'Custom') {
+                    // Ensure start_date is before end_date and not same day
+                    const startDate = selectedDates[0];
+                    const endDate = selectedDates[1];
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (startDate > today || endDate > today) {
+                        showToast('Selected dates cannot be in the future.');
+                        dateRangePicker.clear();
+                        return;
+                    }
+                    if (startDate.getTime() === endDate.getTime()) {
+                        showToast('Please select a date range with different start and end dates.');
+                        dateRangePicker.clear();
+                        return;
+                    }
+                    updateTimePeriod();
+                }
+            },
+            onOpen: function() {
+                document.getElementById('timePeriodFilter').value = 'Custom';
+                document.getElementById('dateRangePickerContainer').style.display = 'block';
+            }
+        });
+
+        // Show/hide date picker based on time period selection
+        document.getElementById('timePeriodFilter').addEventListener('change', function() {
+            const datePickerContainer = document.getElementById('dateRangePickerContainer');
+            if (this.value === 'Custom') {
+                datePickerContainer.style.display = 'block';
+                if (dateRangePicker.selectedDates.length < 2) {
+                    showToast('Please select a date');
+                } else {
+                    // Validate dates before proceeding
+                    const [startDate, endDate] = dateRangePicker.selectedDates;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (startDate > today || (endDate && endDate > today)) {
+                        showToast('Selected dates cannot be in the future.');
+                        dateRangePicker.clear();
+                        return;
+                    }
+                    if (startDate && endDate && startDate.getTime() === endDate.getTime()) {
+                        showToast('Please select a date range with different start and end dates.');
+                        dateRangePicker.clear();
+                        return;
+                    }
+                    updateTimePeriod();
+                }
+            } else {
+                datePickerContainer.style.display = 'none';
+                dateRangePicker.clear();
+                updateTimePeriod();
+            }
+        });
+    });
+
+    // Show Toast Notification
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-warning border-0';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        document.querySelector('.toast-container').appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Show Loading Spinner on Filter Change
+    function showLoading() {
+        document.getElementById('loading-spinner').style.display = 'block';
+    }
+
+    // Function to update Server dropdown options based on selected Algo
+    function updateServerDropdown(algoSelectId, serverDropdownId, serverButtonId, selectedServers) {
+        const selectedAlgo = document.getElementById(algoSelectId).value;
+        const serverDropdown = document.getElementById(serverDropdownId);
+        const serverButton = document.getElementById(serverButtonId);
+
+        serverDropdown.innerHTML = '';
+
+        const servers = algoToServers[selectedAlgo] || [];
+
+        if (servers.length === 0) {
+            serverDropdown.innerHTML = '<li class="server-checkbox"><span>No Servers Available</span></li>';
+            serverButton.textContent = 'No Servers';
+            return;
+        }
+
+        const allServersLi = document.createElement('li');
+        allServersLi.className = 'server-checkbox';
+        allServersLi.innerHTML = `
+            <input type="checkbox" id="${algoSelectId === 'totalMTMAlgoFilter' ? 'total-mtm-server-all' : 'top-least-server-all'}" value="All Servers" ${selectedServers.length === 0 ? 'checked' : ''}>
+            <label for="${algoSelectId === 'totalMTMAlgoFilter' ? 'total-mtm-server-all' : 'top-least-server-all'}">All Servers</label>
+        `;
+        serverDropdown.appendChild(allServersLi);
+
+        servers.forEach(server => {
+            const isChecked = selectedServers.includes(server);
+            const li = document.createElement('li');
+            li.className = 'server-checkbox';
+            li.innerHTML = `
+                <input type="checkbox" id="${algoSelectId === 'totalMTMAlgoFilter' ? 'total-mtm-server-' : 'top-least-server-'}${server}" value="${server}" ${isChecked ? 'checked' : ''}>
+                <label for="${algoSelectId === 'totalMTMAlgoFilter' ? 'total-mtm-server-' : 'top-least-server-'}${server}">${server}</label>
+            `;
+            serverDropdown.appendChild(li);
+        });
+
+        if (selectedServers.length > 0) {
+            serverButton.textContent = selectedServers.join(', ');
+        } else {
+            serverButton.textContent = 'All Servers';
+        }
+
+        const allServersCheckbox = document.getElementById(algoSelectId === 'totalMTMAlgoFilter' ? 'total-mtm-server-all' : 'top-least-server-all');
+        const serverCheckboxes = serverDropdown.querySelectorAll(`input[type="checkbox"]:not(#${algoSelectId === 'totalMTMAlgoFilter' ? 'total-mtm-server-all' : 'top-least-server-all'})`);
+
+        allServersCheckbox.addEventListener('change', function () {
+            if (this.checked) {
+                serverCheckboxes.forEach(cb => cb.checked = false);
+                serverButton.textContent = 'All Servers';
+            }
+            if (algoSelectId === 'totalMTMAlgoFilter') {
+                updateTotalMTMFilters();
+            } else {
+                updateTopLeastFilters();
+            }
+        });
+
+        serverCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function () {
+                const selected = Array.from(serverCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+                allServersCheckbox.checked = selected.length === 0;
+                serverButton.textContent = selected.length > 0 ? selected.join(', ') : 'All Servers';
+                if (algoSelectId === 'totalMTMAlgoFilter') {
+                    updateTotalMTMFilters();
+                } else {
+                    updateTopLeastFilters();
+                }
+            });
+        });
+    }
+
+    // Update DTE Filter
+    function updateDTEFilter() {
+        showLoading();
+        const totalMTMAlgo = document.getElementById('totalMTMAlgoFilter').value;
+        const totalMTMServers = getSelectedServers('totalMTMServerFilterButton');
+        const topLeastAlgo = document.getElementById('topLeastAlgoFilter').value;
+        const topLeastServers = getSelectedServers('topLeastServerFilterButton');
+        const userId = document.getElementById('userIdFilter').value;
+        const timePeriod = document.getElementById('timePeriodFilter').value;
+        const dteFilter = document.getElementById('dteFilter').value;
+        const selectedDates = dateRangePicker.selectedDates;
+
+        let url = "{{ url_for('dashboard.dashboard_route') }}?time_period=" + encodeURIComponent(timePeriod) +
+                  "&user_id=" + encodeURIComponent(userId) +
+                  "&total_mtm_algo=" + encodeURIComponent(totalMTMAlgo) +
+                  "&top_least_algo=" + encodeURIComponent(topLeastAlgo);
+        if (totalMTMServers.length > 0) {
+            url += totalMTMServers.map(server => `&total_mtm_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (topLeastServers.length > 0) {
+            url += topLeastServers.map(server => `&top_least_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (dteFilter !== 'Overall') {
+            url += `&dte_filter=${encodeURIComponent(dteFilter)}`;
+        }
+        if (timePeriod === 'Custom' && selectedDates.length === 2) {
+            const startDate = selectedDates[0].toISOString().split('T')[0];
+            const endDate = selectedDates[1].toISOString().split('T')[0];
+            url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        }
+        console.log(`DTE Filter - Navigating to URL: ${url}`);
+        window.location.href = url;
+    }
+
+    // Update Total MTM Filters (Independent)
+    function updateTotalMTMFilters() {
+        showLoading();
+        const totalMTMAlgo = document.getElementById('totalMTMAlgoFilter').value;
+        const totalMTMServers = getSelectedServers('totalMTMServerFilterButton');
+        const topLeastAlgo = document.getElementById('topLeastAlgoFilter').value;
+        const topLeastServers = getSelectedServers('topLeastServerFilterButton');
+        const userId = document.getElementById('userIdFilter').value;
+        const timePeriod = document.getElementById('timePeriodFilter').value;
+        const dteFilter = document.getElementById('dteFilter').value;
+        const selectedDates = dateRangePicker.selectedDates;
+
+        let url = "{{ url_for('dashboard.dashboard_route') }}?time_period=" + encodeURIComponent(timePeriod) +
+                  "&user_id=" + encodeURIComponent(userId) +
+                  "&total_mtm_algo=" + encodeURIComponent(totalMTMAlgo) +
+                  "&top_least_algo=" + encodeURIComponent(topLeastAlgo);
+        if (totalMTMServers.length > 0) {
+            url += totalMTMServers.map(server => `&total_mtm_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (topLeastServers.length > 0) {
+            url += topLeastServers.map(server => `&top_least_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (dteFilter !== 'Overall') {
+            url += `&dte_filter=${encodeURIComponent(dteFilter)}`;
+        }
+        if (timePeriod === 'Custom' && selectedDates.length === 2) {
+            const startDate = selectedDates[0].toISOString().split('T')[0];
+            const endDate = selectedDates[1].toISOString().split('T')[0];
+            url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        }
+        console.log(`Total MTM Filter - Navigating to URL: ${url}`);
+        window.location.href = url;
+    }
+
+    // Update Top/Least Performing Users Filters (Affects Detailed Report)
+    function updateTopLeastFilters() {
+        showLoading();
+        const totalMTMAlgo = document.getElementById('totalMTMAlgoFilter').value;
+        const totalMTMServers = getSelectedServers('totalMTMServerFilterButton');
+        const topLeastAlgo = document.getElementById('topLeastAlgoFilter').value;
+        const topLeastServers = getSelectedServers('topLeastServerFilterButton');
+        const userId = document.getElementById('userIdFilter').value;
+        const timePeriod = document.getElementById('timePeriodFilter').value;
+        const dteFilter = document.getElementById('dteFilter').value;
+        const selectedDates = dateRangePicker.selectedDates;
+
+        let url = "{{ url_for('dashboard.dashboard_route') }}?time_period=" + encodeURIComponent(timePeriod) +
+                  "&user_id=" + encodeURIComponent(userId) +
+                  "&total_mtm_algo=" + encodeURIComponent(totalMTMAlgo) +
+                  "&top_least_algo=" + encodeURIComponent(topLeastAlgo);
+        if (totalMTMServers.length > 0) {
+            url += totalMTMServers.map(server => `&total_mtm_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (topLeastServers.length > 0) {
+            url += topLeastServers.map(server => `&top_least_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (dteFilter !== 'Overall') {
+            url += `&dte_filter=${encodeURIComponent(dteFilter)}`;
+        }
+        if (timePeriod === 'Custom' && selectedDates.length === 2) {
+            const startDate = selectedDates[0].toISOString().split('T')[0];
+            const endDate = selectedDates[1].toISOString().split('T')[0];
+            url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        }
+        console.log(`Top/Least Filter - Navigating to URL: ${url}`);
+        window.location.href = url;
+    }
+
+    // Update Time Period Filter (Global)
+    function updateTimePeriod() {
+        const timePeriod = document.getElementById('timePeriodFilter').value;
+        const selectedDates = dateRangePicker.selectedDates;
+
+        // Prevent navigation if Custom is selected but no valid date range
+        if (timePeriod === 'Custom' && selectedDates.length < 2) {
+            document.getElementById('loading-spinner').style.display = 'none';
+            // showToast('Please select a valid date range for Custom period.');
+            return;
+        }
+
+        if (timePeriod === 'Custom') {
+            const startDate = selectedDates[0];
+            const endDate = selectedDates[1];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (startDate > today || endDate > today) {
+                document.getElementById('loading-spinner').style.display = 'none';
+                showToast('Selected dates cannot be in the future.');
+                dateRangePicker.clear();
+                return;
+            }
+            if (startDate.getTime() === endDate.getTime()) {
+                document.getElementById('loading-spinner').style.display = 'none';
+                showToast('Please select a date range with different start and end dates.');
+                dateRangePicker.clear();
+                return;
+            }
+        }
+
+        showLoading();
+        const totalMTMAlgo = document.getElementById('totalMTMAlgoFilter').value;
+        const totalMTMServers = getSelectedServers('totalMTMServerFilterButton');
+        const topLeastAlgo = document.getElementById('topLeastAlgoFilter').value;
+        const topLeastServers = getSelectedServers('topLeastServerFilterButton');
+        const userId = document.getElementById('userIdFilter').value;
+        const dteFilter = document.getElementById('dteFilter').value;
+
+        let url = "{{ url_for('dashboard.dashboard_route') }}?time_period=" + encodeURIComponent(timePeriod) +
+                  "&user_id=" + encodeURIComponent(userId) +
+                  "&total_mtm_algo=" + encodeURIComponent(totalMTMAlgo) +
+                  "&top_least_algo=" + encodeURIComponent(topLeastAlgo);
+        if (totalMTMServers.length > 0) {
+            url += totalMTMServers.map(server => `&total_mtm_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (topLeastServers.length > 0) {
+            url += topLeastServers.map(server => `&top_least_servers=${encodeURIComponent(server)}`).join('');
+        }
+        if (dteFilter !== 'Overall') {
+            url += `&dte_filter=${encodeURIComponent(dteFilter)}`;
+        }
+        if (timePeriod === 'Custom' && selectedDates.length === 2) {
+            const startDate = selectedDates[0].toISOString().split('T')[0];
+            const endDate = selectedDates[1].toISOString().split('T')[0];
+            url += `&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+        }
+        console.log(`Time Period Filter - Navigating to URL: ${url}`);
+        window.location.href = url;
+    }
+
+    function getSelectedServers(buttonId) {
+        const allServersChecked = document.getElementById(buttonId === 'totalMTMServerFilterButton' ? 'total-mtm-server-all' : 'top-least-server-all')?.checked;
+        if (allServersChecked) {
+            return [];
+        }
+        const checkboxes = document.querySelectorAll(`#${buttonId} + .dropdown-menu .server-checkbox input[type="checkbox"]:not(#${buttonId === 'totalMTMServerFilterButton' ? 'total-mtm-server-all' : 'top-least-server-all'})`);
+        return Array.from(checkboxes)
+            .filter(checkbox => checkbox.checked)
+            .map(checkbox => checkbox.value);
+    }
+
+    // Initialize Server Dropdowns and Chart on Page Load
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize Total MTM Server Dropdown
+        const totalMTMSelectedServers = {{ total_mtm_servers | tojson }};
+        updateServerDropdown('totalMTMAlgoFilter', 'totalMTMServerDropdown', 'totalMTMServerFilterButton', totalMTMSelectedServers);
+
+        // Initialize Top/Least Server Dropdown
+        const topLeastSelectedServers = {{ top_least_servers | tojson }};
+        updateServerDropdown('topLeastAlgoFilter', 'topLeastServerDropdown', 'topLeastServerFilterButton', topLeastSelectedServers);
+
+        // Add event listeners for Algo changes
+        document.getElementById('totalMTMAlgoFilter').addEventListener('change', function () {
+            updateServerDropdown('totalMTMAlgoFilter', 'totalMTMServerDropdown', 'totalMTMServerFilterButton', []);
+            updateTotalMTMFilters();
+        });
+
+        document.getElementById('topLeastAlgoFilter').addEventListener('change', function () {
+            updateServerDropdown('topLeastAlgoFilter', 'topLeastServerDropdown', 'topLeastServerFilterButton', []);
+            updateTopLeastFilters();
+        });
+
+        // Prevent dropdown from closing when clicking inside
+        document.querySelectorAll('.server-filter-dropdown').forEach(dropdown => {
+            dropdown.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        });
+
+        // Export Table to CSV
+        function exportTableToCSV(tableId, filename) {
+            const table = document.getElementById(tableId);
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+
+            for (const row of rows) {
+                const cols = row.querySelectorAll('td, th');
+                const rowData = Array.from(cols).map(col => `"${col.innerText.replace(/"/g, '""')}"`).join(',');
+                csv.push(rowData);
+            }
+
+            const csvFile = new Blob([csv.join('\n')], { type: 'text/csv' });
+            const downloadLink = document.createElement('a');
+            downloadLink.download = filename;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        // Initialize Tooltips and Chart
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        const ctx = document.getElementById('mtmVsDayChart').getContext('2d');
+        const mtmVsDayChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ mtm_dates | tojson }},
+                datasets: [{
+                    label: 'Total MTM',
+                    data: {{ mtm_values | tojson }},
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'MTM'
+                        },
+                        beginAtZero: false
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+
+        // Toggle Chart Type
+        document.getElementById('toggleChartBtn').addEventListener('click', function () {
+            const isLine = mtmVsDayChart.config.type === 'line';
+            mtmVsDayChart.config.type = isLine ? 'bar' : 'line';
+            mtmVsDayChart.config.data.datasets[0].fill = isLine ? false : true;
+            mtmVsDayChart.config.data.datasets[0].backgroundColor = isLine ? '#2c3e50' : 'rgba(78, 115, 223, 0.1)';
+            mtmVsDayChart.config.data.datasets[0].borderColor = isLine ? '#2c3e50' : '#4e73df';
+            this.textContent = isLine ? 'Toggle to Line Chart' : 'Toggle to Bar Chart';
+            mtmVsDayChart.update();
+        });
+    });
+</script>
+{% endblock %}

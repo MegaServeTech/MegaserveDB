@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Admin Home{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="text-center mb-4">Home</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages mb-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Create New Table</h5>
+            <form method="POST" action="{{ url_for('admin.create_table_route') }}">
+                <div class="mb-3">
+                    <label for="table_name" class="form-label">Table Name</label>
+                    <input type="text" class="form-control" id="table_name" name="table_name" required>
+                </div>
+                <button type="submit" name="create_table" class="btn btn-grd-primary">Create Table</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Upload Files to Table</h5>
+            <form method="POST" action="{{ url_for('admin.upload_files') }}" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="table" class="form-label">Select Table</label>
+                    <select class="form-select" id="table" name="table" required style="max-height: 200px; overflow-y: auto;">
+                        {% set hidden_tables = ['auth', 'upload_log', 'jainam', 'mrgin_temp_data', 'partner_distributions', 'user_partner_data'] %}
+                        {% for table in tables %}
+                            {% if table not in hidden_tables %}
+                                {% set display_name =
+                                    'All Users' if table == 'users' else
+                                    'Summary Orderbook' if table == 'orderbook' else
+                                    'Orderbook' if table == 'ob' else
+                                    'Portfolios' if table == 'portfolios' else
+                                    'Strategy Tags' if table == 'strategytags' else
+                                    'Legs' if table == 'legs' else
+                                    'MultiLeg Orders' if table == 'multilegorders' else
+                                    'Positions' if table == 'positions' else
+                                    'Gridlog' if table == 'gridlog' else
+                                    table
+                                %}
+                                <option value="{{ table }}" {% if table == last_used_table %}selected{% endif %}>
+                                    {{ display_name|capitalize }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Optional DTE dropdown (hidden by default) -->
+                <div class="mb-3" id="dte_dropdown" style="display: none;">
+                    <label for="dte" class="form-label">Select DTE</label>
+                    <select class="form-select" id="dte" name="dte">
+                        <option value="0dte">0DTE</option>
+                        <option value="1dte">1DTE</option>
+                        <option value="2dte">2DTE</option>
+                        <option value="3dte">3DTE</option>
+                        <option value="4dte">4DTE</option>
+                    </select>
+                </div>
+
+                <div class="upload-container">
+                    <div class="upload-button-group">
+                        <button type="button" class="upload-button" id="uploadTrigger">Select files</button>
+                        <!-- <button type="button" class="btn btn-secondary ms-2" id="driveTrigger">Add Google Drive Link</button> -->
+                    </div>
+                    <div class="upload-box" id="uploadBox">
+                        <input type="file" id="file_upload" name="file_upload" class="file-input" multiple accept=".csv,.xlsx,.xls">
+                        <p class="drop-text">or drop files here</p>
+                    </div>
+                    <input type="text" id="drive_link" name="drive_link" class="form-control mt-2" placeholder="Paste Google Drive folder link (optional)" style="display: none;">
+                </div>
+                <button type="submit" class="btn btn-grd-primary mt-3">Upload</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleDteDropdown() {
+        const tableSelect = document.getElementById('table');
+        const dteDropdown = document.getElementById('dte_dropdown');
+        if (tableSelect.value === 'users') {
+            dteDropdown.style.display = 'block';
+        } else {
+            dteDropdown.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Restore last selected table from localStorage
+        const savedTable = localStorage.getItem('lastSelectedTable');
+        const tableSelect = document.getElementById('table');
+        if (savedTable) {
+            for (const option of tableSelect.options) {
+                if (option.value === savedTable) {
+                    option.selected = true;
+                    break;
+                }
+            }
+        }
+
+        toggleDteDropdown();
+
+        tableSelect.addEventListener('change', (e) => {
+            localStorage.setItem('lastSelectedTable', e.target.value);
+            toggleDteDropdown();
+        });
+    });
+
+    // Upload functionality
+    const uploadTrigger = document.getElementById('uploadTrigger');
+    const uploadBox = document.getElementById('uploadBox');
+    const fileInput = document.getElementById('file_upload');
+    const driveTrigger = document.getElementById('driveTrigger');
+    const driveLinkInput = document.getElementById('drive_link');
+    const form = document.querySelector("form[action=\"{{ url_for('admin.upload_files') }}\"]");
+
+    uploadTrigger.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        uploadTrigger.textContent = fileInput.files.length > 0
+            ? `${fileInput.files.length} file(s) selected`
+            : 'Select files';
+    });
+
+    uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.classList.add('dragover');
+    });
+
+    uploadBox.addEventListener('dragleave', () => {
+        uploadBox.classList.remove('dragover');
+    });
+
+    uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove('dragover');
+        fileInput.files = e.dataTransfer.files;
+        uploadTrigger.textContent = `${fileInput.files.length} file(s) selected`;
+    });
+
+    if (driveTrigger) {
+        driveTrigger.addEventListener('click', () => {
+            const link = prompt('Please paste the Google Drive folder link:');
+            if (link) {
+                driveLinkInput.value = link;
+                driveLinkInput.style.display = 'block';
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'is_drive_link';
+                hiddenInput.value = 'true';
+                form.appendChild(hiddenInput);
+            } else {
+                driveLinkInput.style.display = 'none';
+                driveLinkInput.value = '';
+            }
+        });
+    }
+
+    form.addEventListener('submit', (e) => {
+        if (driveLinkInput.value && !fileInput.files.length) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'is_drive_link';
+            hiddenInput.value = 'true';
+            form.appendChild(hiddenInput);
+        }
+    });
+</script>
+{% endblock %}

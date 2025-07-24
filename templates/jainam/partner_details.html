@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partner Details - {{ partner_id | default('Partner') }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap">
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            margin: 0;
+            padding: 30px;
+            background-color: #eef2f6;
+            color: #333;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        h2 {
+            font-family: 'Montserrat', sans-serif;
+            color: #1a4a72;
+            margin-bottom: 25px;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 1.5px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+            font-size: 2em;
+            padding: 10px 0;
+        }
+
+        .table-container {
+            display: flex;
+            width: 98%;
+            max-width: 1400px;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            background-color: #ffffff;
+            border: 1px solid #dcdcdc;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .frozen-columns {
+            flex-shrink: 0;
+            background-color: #ffffff;
+            border-right: 1px solid #c8d3e0;
+            z-index: 10;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #f1f5f9;
+        }
+
+        .frozen-columns::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .frozen-columns::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+        }
+
+        .frozen-columns::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 0.5rem;
+        }
+
+        .frozen-columns::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+
+        .scrollable-columns {
+            overflow-x: auto;
+            flex-grow: 1;
+            background-color: #ffffff;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #f1f5f9;
+        }
+
+        .scrollable-columns::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .scrollable-columns::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+        }
+
+        .scrollable-columns::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 0.5rem;
+        }
+
+        .scrollable-columns::-webkit-scrollbar-thumb:hover {
+            background: #2563eb;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: auto;
+            min-width: 100%;
+            table-layout: fixed;
+        }
+
+        th, td {
+            border: 1px solid #e0e6ed;
+            padding: 14px 20px;
+            text-align: left;
+            white-space: nowrap;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            font-size: 0.95em;
+        }
+
+        th {
+            background-color: #f7f9fc;
+            color: #555;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            font-weight: 600;
+            border-bottom: 2px solid #aebfd4;
+            text-transform: uppercase;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9em;
+        }
+
+        .frozen-columns tbody tr:not(.grand-total-row):not(.blank-row):not(.overall-grand-total-row):hover,
+        .scrollable-columns tbody tr:not(.grand-total-row):not(.blank-row):not(.overall-grand-total-row):hover {
+            background-color: #e0f2f7;
+            cursor: pointer;
+        }
+
+        .frozen-columns th:nth-child(1), .frozen-columns td:nth-child(1) { width: 70px; min-width: 70px; font-weight: 600; }
+        .frozen-columns th:nth-child(2), .frozen-columns td:nth-child(2) { width: 90px; min-width: 90px; font-weight: 600; color: #007bff; cursor: pointer; }
+        .frozen-columns th:nth-child(3), .frozen-columns td:nth-child(3) { width: 100px; min-width: 100px; }
+        .frozen-columns th:nth-child(4), .frozen-columns td:nth-child(4) { width: 80px; min-width: 80px; }
+        .frozen-columns th:nth-child(5), .frozen-columns td:nth-child(5) { width: 100px; min-width: 100px; }
+
+        .scrollable-columns th, .scrollable-columns td {
+            width: 100px;
+            min-width: 100px;
+        }
+
+        .header-group {
+            text-align: center;
+            background-color: #e8f0f8;
+            color: #444;
+            padding: 8px 0;
+            border-bottom: 1px solid #aebfd4;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .positive {
+            color: #28a745;
+            font-weight: 600;
+        }
+        .negative {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        .zero {
+            color: #6c757d;
+            font-weight: 400;
+        }
+
+        .grand-total-row {
+            background-color: #f0f8ff;
+            font-weight: 600;
+            border-top: 2px solid #aebfd4;
+            border-bottom: 2px solid #aebfd4;
+        }
+        .grand-total-row td {
+            padding: 16px 20px;
+        }
+        .grand-total-row td:first-child {
+            text-align: center;
+            color: #1a4a72;
+        }
+        .grand-total-row .total-value {
+            color: #1a4a72;
+        }
+
+        .blank-row {
+            height: 20px;
+            background-color: #eef2f6;
+            border: none;
+        }
+        .blank-row td {
+            border: none;
+            padding: 0;
+        }
+
+        .overall-grand-total-row {
+            background-color: #add8e6;
+            font-weight: 700;
+            border-top: 3px solid #1a4a72;
+            border-bottom: 3px solid #1a4a72;
+        }
+        .overall-grand-total-row td {
+            padding: 18px 20px;
+            font-size: 1.05em;
+            color: #1a4a72;
+        }
+        .overall-grand-total-row td:first-child {
+            text-align: center;
+            font-size: 1.1em;
+            letter-spacing: 0.5px;
+        }
+        .overall-grand-total-row .positive, .overall-grand-total-row .negative, .overall-grand-total-row .zero {
+            color: inherit;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #6c757d;
+            font-size: 1.1em;
+        }
+
+        .error-message {
+            text-align: center;
+            padding: 2rem;
+            color: #dc3545;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <h2 id="partnerTitle"><i class="fas fa-users"></i> <span>Loading Partner Details...</span></h2>
+
+    <div class="table-container">
+        <div class="frozen-columns">
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">ALGO</th>
+                        <th rowspan="2">UserID</th>
+                        <th colspan="3" class="header-group">Total Performance</th>
+                    </tr>
+                    <tr>
+                        <th>Avg Allocation</th>
+                        <th>MTM%</th>
+                        <th>MTM</th>
+                    </tr>
+                </thead>
+                <tbody id="partnerDetailsTableBodyFrozen">
+                    <tr><td colspan="5" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="scrollable-columns" id="scrollable-columns">
+            <table>
+                <thead>
+                    <tr id="date-headers">
+                        <!-- Dates will be dynamically populated -->
+                    </tr>
+                    <tr id="sub-headers">
+                        <!-- Sub-headers (Allocation, MTM, MTM%) will be dynamically populated -->
+                    </tr>
+                </thead>
+                <tbody id="partnerDetailsTableBodyScrollable">
+                    <tr><td colspan="21" class="loading">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Utility Functions
+        function formatIndianNumber(value) {
+            value = parseFloat(value || 0).toFixed(2);
+            let [integer, decimal] = value.split('.');
+            let lastThree = integer.slice(-3);
+            let otherNumbers = integer.slice(0, -3);
+            if (otherNumbers !== '') {
+                lastThree = ',' + lastThree;
+            }
+            let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
+            return decimal ? formatted + '.' + decimal : formatted;
+        }
+
+        function getClassForMTM(mtmPercent) {
+            const val = parseFloat(mtmPercent.replace('%', '') || 0);
+            if (val > 0) return 'positive';
+            if (val < 0) return 'negative';
+            return 'zero';
+        }
+
+        // Scroll Synchronization
+        function syncScroll() {
+            const frozenColumns = document.querySelector('.frozen-columns');
+            const scrollableColumns = document.querySelector('.scrollable-columns');
+            scrollableColumns.addEventListener('scroll', () => {
+                frozenColumns.scrollTop = scrollableColumns.scrollTop;
+            });
+            frozenColumns.addEventListener('scroll', () => {
+                scrollableColumns.scrollTop = frozenColumns.scrollTop;
+            });
+        }
+
+        // Hover Synchronization
+        function setupHoverSync() {
+            const frozenRows = document.querySelectorAll('#partnerDetailsTableBodyFrozen tr:not(.grand-total-row):not(.blank-row):not(.overall-grand-total-row)');
+            const scrollableRows = document.querySelectorAll('#partnerDetailsTableBodyScrollable tr:not(.grand-total-row):not(.blank-row):not(.overall-grand-total-row)');
+            
+            frozenRows.forEach((row, index) => {
+                row.addEventListener('mouseenter', () => {
+                    if (scrollableRows[index]) {
+                        scrollableRows[index].style.backgroundColor = '#e0f2f7';
+                    }
+                });
+                row.addEventListener('mouseleave', () => {
+                    if (scrollableRows[index]) {
+                        scrollableRows[index].style.backgroundColor = '';
+                    }
+                });
+            });
+
+            scrollableRows.forEach((row, index) => {
+                row.addEventListener('mouseenter', () => {
+                    if (frozenRows[index]) {
+                        frozenRows[index].style.backgroundColor = '#e0f2f7';
+                    }
+                });
+                row.addEventListener('mouseleave', () => {
+                    if (frozenRows[index]) {
+                        frozenRows[index].style.backgroundColor = '';
+                    }
+                });
+            });
+        }
+
+        // Render Partner Details
+        function renderPartnerDetails(partnerId, data) {
+            const partnerTitle = document.getElementById('partnerTitle').querySelector('span');
+            const frozenTableBody = document.getElementById('partnerDetailsTableBodyFrozen');
+            const scrollableTableBody = document.getElementById('partnerDetailsTableBodyScrollable');
+            const dateHeaders = document.getElementById('date-headers');
+            const subHeaders = document.getElementById('sub-headers');
+
+            partnerTitle.textContent = `${partnerId} Detailed Performance`;
+            const algoStats = data.algo_stats || {};
+            const uniqueDates = data.unique_dates || [];
+
+            // Check for no data
+            if (!Object.keys(algoStats).length || !uniqueDates.length) {
+                frozenTableBody.innerHTML = '<tr><td colspan="5" class="error-message">No data available for this partner.</td></tr>';
+                scrollableTableBody.innerHTML = '<tr><td colspan="21" class="error-message">No data available for this partner.</td></tr>';
+                return;
+            }
+
+            // Render date headers
+            let dateHeaderHtml = '';
+            let subHeaderHtml = '';
+            uniqueDates.forEach(date => {
+                dateHeaderHtml += `<th colspan="3" class="header-group">${date}</th>`;
+                subHeaderHtml += `
+                    <th>Allocation</th>
+                    <th>MTM</th>
+                    <th>MTM%</th>
+                `;
+            });
+            dateHeaders.innerHTML = dateHeaderHtml;
+            subHeaders.innerHTML = subHeaderHtml;
+
+            let frozenHtml = '';
+            let scrollableHtml = '';
+            let currentAlgo = null;
+            let algoTotalAllocation = 0;
+            let algoTotalMTM = 0;
+            let currentAlgoDailyTotals = Array(uniqueDates.length).fill(0).map(() => ({ alloc: 0, mtm: 0 }));
+            const dailyGrandTotals = Array(uniqueDates.length).fill(0).map(() => ({ alloc: 0, mtm: 0 }));
+            let overallGrandAllocation = 0;
+            let overallGrandMTM = 0;
+
+            // Sort algos
+            const sortedAlgos = Object.keys(algoStats).sort();
+            sortedAlgos.forEach((algo, index) => {
+                if (currentAlgo !== null && currentAlgo !== algo) {
+                    // Add total row for previous algo
+                    const mtmPc = (algoTotalAllocation !== 0) ? ((algoTotalMTM / algoTotalAllocation) * 100).toFixed(2) + '%' : '0.00%';
+                    const mtmClass = getClassForMTM(mtmPc);
+                    frozenHtml += `
+                        <tr class="grand-total-row">
+                            <td colspan="2">Total (Algo ${currentAlgo})</td>
+                            <td class="total-value">${formatIndianNumber(algoTotalAllocation)}</td>
+                            <td class="${mtmClass} total-value">${mtmPc}</td>
+                            <td class="${mtmClass} total-value">${formatIndianNumber(algoTotalMTM)}</td>
+                        </tr>
+                        <tr class="blank-row"><td colspan="5"></td></tr>
+                    `;
+                    let dailyTotalHtml = '';
+                    currentAlgoDailyTotals.forEach(day => {
+                        const dailyMtmPc = (day.alloc !== 0) ? ((day.mtm / day.alloc) * 100).toFixed(2) + '%' : '0.00%';
+                        const dailyMtmClass = getClassForMTM(dailyMtmPc);
+                        dailyTotalHtml += `
+                            <td class="total-value">${formatIndianNumber(day.alloc)}</td>
+                            <td class="${dailyMtmClass} total-value">${formatIndianNumber(day.mtm)}</td>
+                            <td class="${dailyMtmClass} total-value">${dailyMtmPc}</td>
+                        `;
+                    });
+                    scrollableHtml += `
+                        <tr class="grand-total-row">${dailyTotalHtml}</tr>
+                        <tr class="blank-row"><td colspan="${uniqueDates.length * 3}"></td></tr>
+                    `;
+                }
+
+                currentAlgo = algo;
+                algoTotalAllocation = 0;
+                algoTotalMTM = 0;
+                currentAlgoDailyTotals = Array(uniqueDates.length).fill(0).map(() => ({ alloc: 0, mtm: 0 }));
+
+                // Aggregate user data to avoid duplicates, excluding zero allocations
+                const userMap = {};
+                const users = algoStats[algo].users || [];
+                users.forEach(user => {
+                    if (!userMap[user.user_id]) {
+                        userMap[user.user_id] = {
+                            total_allocation: 0,
+                            total_mtm: 0,
+                            daily_data: Array(uniqueDates.length).fill(0).map(() => ({ allocation: 0, mtm: 0 })),
+                            non_zero_count: 0 // Track number of non-zero allocation entries
+                        };
+                    }
+                    const allocation = parseFloat(user.allocation || 0);
+                    if (allocation > 0) { // Only include non-zero allocations
+                        userMap[user.user_id].total_allocation += allocation;
+                        userMap[user.user_id].non_zero_count += 1;
+                    }
+                    userMap[user.user_id].total_mtm += parseFloat(user.mtm || 0);
+                    user.daily_data.forEach(day => {
+                        const dateIndex = uniqueDates.indexOf(day.date);
+                        if (dateIndex !== -1) {
+                            const dailyAllocation = parseFloat(day.allocation || 0);
+                            if (dailyAllocation > 0) { // Only include non-zero daily allocations
+                                userMap[user.user_id].daily_data[dateIndex].allocation += dailyAllocation;
+                            }
+                            userMap[user.user_id].daily_data[dateIndex].mtm += parseFloat(day.mtm || 0);
+                        }
+                    });
+                });
+
+                // Render consolidated user data
+                const sortedUsers = Object.keys(userMap).sort();
+                sortedUsers.forEach(userId => {
+                    const user = userMap[userId];
+                    const avgAllocation = user.non_zero_count > 0 ? user.total_allocation / user.non_zero_count : 0;
+                    if (avgAllocation === 0 && user.total_mtm === 0) return; // Skip users with no non-zero allocations and no MTM
+                    const totalMtmPc = (avgAllocation !== 0) ? ((user.total_mtm / avgAllocation) * 100).toFixed(2) + '%' : '0.00%';
+                    const mtmClass = getClassForMTM(totalMtmPc);
+                    frozenHtml += `
+                        <tr>
+                            <td>${algo}</td>
+                            <td>${userId}</td>
+                            <td>${formatIndianNumber(avgAllocation)}</td>
+                            <td class="${mtmClass}">${totalMtmPc}</td>
+                            <td class="${mtmClass}">${formatIndianNumber(user.total_mtm)}</td>
+                        </tr>
+                    `;
+
+                    let dailyHtml = '';
+                    user.daily_data.forEach((dayData, dayIndex) => {
+                        const dailyMtmPc = (dayData.allocation !== 0) ? ((dayData.mtm / dayData.allocation) * 100).toFixed(2) + '%' : '0.00%';
+                        const dailyMtmClass = getClassForMTM(dailyMtmPc);
+                        dailyHtml += `
+                            <td>${formatIndianNumber(dayData.allocation)}</td>
+                            <td class="${dailyMtmClass}">${formatIndianNumber(dayData.mtm)}</td>
+                            <td class="${dailyMtmClass}">${dailyMtmPc}</td>
+                        `;
+                        currentAlgoDailyTotals[dayIndex].alloc += dayData.allocation;
+                        currentAlgoDailyTotals[dayIndex].mtm += dayData.mtm;
+                        dailyGrandTotals[dayIndex].alloc += dayData.allocation;
+                        dailyGrandTotals[dayIndex].mtm += dayData.mtm;
+                    });
+                    scrollableHtml += `<tr>${dailyHtml}</tr>`;
+
+                    algoTotalAllocation += avgAllocation;
+                    algoTotalMTM += user.total_mtm;
+                });
+
+                overallGrandAllocation += algoTotalAllocation;
+                overallGrandMTM += algoTotalMTM;
+
+                // Add total for the last algo
+                if (index === sortedAlgos.length - 1) {
+                    const mtmPc = (algoTotalAllocation !== 0) ? ((algoTotalMTM / algoTotalAllocation) * 100).toFixed(2) + '%' : '0.00%';
+                    const mtmClass = getClassForMTM(mtmPc);
+                    frozenHtml += `
+                        <tr class="grand-total-row">
+                            <td colspan="2">Total (Algo ${currentAlgo})</td>
+                            <td class="total-value">${formatIndianNumber(algoTotalAllocation)}</td>
+                            <td class="${mtmClass} total-value">${mtmPc}</td>
+                            <td class="${mtmClass} total-value">${formatIndianNumber(algoTotalMTM)}</td>
+                        </tr>
+                        <tr class="blank-row"><td colspan="5"></td></tr>
+                    `;
+                    let dailyTotalHtml = '';
+                    currentAlgoDailyTotals.forEach(day => {
+                        const dailyMtmPc = (day.alloc !== 0) ? ((day.mtm / day.alloc) * 100).toFixed(2) + '%' : '0.00%';
+                        const dailyMtmClass = getClassForMTM(dailyMtmPc);
+                        dailyTotalHtml += `
+                            <td class="total-value">${formatIndianNumber(day.alloc)}</td>
+                            <td class="${dailyMtmClass} total-value">${formatIndianNumber(day.mtm)}</td>
+                            <td class="${dailyMtmClass} total-value">${dailyMtmPc}</td>
+                        `;
+                    });
+                    scrollableHtml += `
+                        <tr class="grand-total-row">${dailyTotalHtml}</tr>
+                        <tr class="blank-row"><td colspan="${uniqueDates.length * 3}"></td></tr>
+                    `;
+                }
+            });
+
+            // Add grand total row
+            const overallMtmPc = (overallGrandAllocation !== 0) ? ((overallGrandMTM / overallGrandAllocation) * 100).toFixed(2) + '%' : '0.00%';
+            const overallMtmClass = getClassForMTM(overallMtmPc);
+            frozenHtml += `
+                <tr class="overall-grand-total-row">
+                    <td colspan="2">Grand Total</td>
+                    <td>${formatIndianNumber(overallGrandAllocation)}</td>
+                    <td class="${overallMtmClass}">${overallMtmPc}</td>
+                    <td>${formatIndianNumber(overallGrandMTM)}</td>
+                </tr>
+            `;
+            let overallDailyGrandTotalHtml = '';
+            dailyGrandTotals.forEach(day => {
+                const dailyMtmPc = (day.alloc !== 0) ? ((day.mtm / day.alloc) * 100).toFixed(2) + '%' : '0.00%';
+                const dailyMtmClass = getClassForMTM(dailyMtmPc);
+                overallDailyGrandTotalHtml += `
+                    <td>${formatIndianNumber(day.alloc)}</td>
+                    <td class="${dailyMtmClass}">${formatIndianNumber(day.mtm)}</td>
+                    <td class="${dailyMtmClass}">${dailyMtmPc}</td>
+                `;
+            });
+            scrollableHtml += `
+                <tr class="overall-grand-total-row">${overallDailyGrandTotalHtml}</tr>
+            `;
+
+            frozenTableBody.innerHTML = frozenHtml;
+            scrollableTableBody.innerHTML = scrollableHtml;
+            setupHoverSync();
+            syncScroll();
+        }
+
+        // Fetch Partner Details
+        async function fetchPartnerDetails(partnerId, startDate = '', endDate = '') {
+            const frozenTableBody = document.getElementById('partnerDetailsTableBodyFrozen');
+            const scrollableTableBody = document.getElementById('partnerDetailsTableBodyScrollable');
+            const partnerTitle = document.getElementById('partnerTitle').querySelector('span');
+
+            frozenTableBody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+            scrollableTableBody.innerHTML = '<tr><td colspan="21" class="loading">Loading...</td></tr>';
+            partnerTitle.textContent = `${partnerId} Detailed Performance`;
+
+            try {
+                const params = new URLSearchParams({ id: partnerId });
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+
+                const response = await fetch(`/jainam/partner_details?${params.toString()}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch data: HTTP status ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Handle explicit error or empty data
+                if (data.error || !data.algo_stats || Object.keys(data.algo_stats).length === 0 || !data.unique_dates || data.unique_dates.length === 0) {
+                    frozenTableBody.innerHTML = '<tr><td colspan="5" class="error-message">No data available for this partner.</td></tr>';
+                    scrollableTableBody.innerHTML = '<tr><td colspan="21" class="error-message"></td></tr>';
+                    return;
+                }
+
+                renderPartnerDetails(partnerId, data);
+            } catch (error) {
+                console.error('Error fetching partner details:', error);
+                partnerTitle.textContent = `${partnerId} Detailed Performance`;
+                frozenTableBody.innerHTML = `<tr><td colspan="5" class="error-message">No data available for this partner. <a href="/jainam/dashboard">Go back to dashboard</a></td></tr>`;
+                scrollableTableBody.innerHTML = '<tr><td colspan="21" class="error-message"></td></tr>';
+            }
+        }
+
+        // Initialize on Page Load
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const partnerId = urlParams.get('id');
+            const startDate = urlParams.get('start_date') || '';
+            const endDate = urlParams.get('end_date') || '';
+
+            if (partnerId) {
+                fetchPartnerDetails(partnerId, startDate, endDate);
+            } else {
+                document.getElementById('partnerTitle').querySelector('span').textContent = 'Partner Stats (Select from main page)';
+                document.getElementById('partnerDetailsTableBodyFrozen').innerHTML = '<tr><td colspan="5" class="error-message">No partner selected. Please go back to the <a href="/jainam/dashboard">main page</a>.</td></tr>';
+                document.getElementById('partnerDetailsTableBodyScrollable').innerHTML = '<tr><td colspan="21" class="error-message"></td></tr>';
+            }
+        });
+    </script>
+</body>
+</html>

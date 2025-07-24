@@ -1,0 +1,713 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+    /* Enhanced Responsive Admin Dashboard Styles */
+    :root {
+        --primary-color: #0055aa;
+        --primary-hover: #004488;
+        --danger-color: #fc185a;
+        --danger-hover: #e00e4e;
+        --warning-color: #e0a800;
+        --warning-hover: #c79300;
+        --success-color: #28a745;
+        --light-bg: #f8f9fa;
+        --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-medium: 0 8px 24px rgba(0, 0, 0, 0.15);
+        --border-radius: 12px;
+        --border-radius-sm: 6px;
+        --transition: all 0.3s ease;
+    }
+
+    /* Base Styles */
+    * {
+        box-sizing: border-box;
+    }
+
+    .admin-container {
+        padding: 1.5rem;
+        max-width: 100%;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Enhanced Card Styles */
+    .card {
+        background: linear-gradient(135deg, #ffffff, #f8f9fa);
+        border: none;
+        box-shadow: var(--shadow-light);
+        border-radius: var(--border-radius);
+        transition: var(--transition);
+        margin-bottom: 1.5rem;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, var(--primary-color), #0066cc);
+        color: white;
+        border: none;
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    /* Enhanced Form Styles */
+    .form-control, .form-select {
+        border-radius: var(--border-radius-sm);
+        border: 2px solid #e9ecef;
+        transition: var(--transition);
+        font-size: 0.95rem;
+        padding: 0.75rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0, 85, 170, 0.15);
+        outline: none;
+    }
+
+    /* Enhanced Button Styles */
+    .btn {
+        border-radius: var(--border-radius-sm);
+        transition: var(--transition);
+        font-weight: 500;
+        min-height: 44px; /* Touch-friendly */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover) !important;
+        border-color: var(--primary-hover) !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-danger {
+        background-color: var(--danger-color) !important;
+        border-color: var(--danger-color) !important;
+    }
+
+    .btn-danger:hover {
+        background-color: var(--danger-hover) !important;
+        border-color: var(--danger-hover) !important;
+    }
+
+    .btn-warning {
+        background-color: var(--warning-color) !important;
+        border-color: var(--warning-color) !important;
+    }
+
+    .btn-warning:hover {
+        background-color: var(--warning-hover) !important;
+        border-color: var(--warning-hover) !important;
+    }
+
+    /* Enhanced Table Container */
+    .table-container {
+        background: white;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-light);
+        position: relative;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 500px;
+        position: relative;
+    }
+
+    /* Custom Scrollbar */
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: var(--primary-color);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-hover);
+    }
+
+    /* Enhanced Table Styles */
+    .table {
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        min-width: 700px; /* Ensure minimum width for mobile */
+    }
+
+    .table thead th {
+        background: var(--light-bg);
+        border: none;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem 0.75rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .table tbody td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .table-striped > tbody > tr:nth-of-type(odd) {
+        background-color: rgba(0, 85, 170, 0.02);
+    }
+
+    .table-hover > tbody > tr:hover {
+        background-color: rgba(0, 85, 170, 0.05);
+    }
+
+    /* Action Buttons in Table */
+    .action-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .btn-sm {
+        min-height: 36px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    /* Three Dot Menu */
+    .three-dot-btn {
+        background: var(--warning-color);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 1.2rem;
+    }
+
+    .three-dot-btn:hover {
+        background: var(--warning-hover);
+        transform: scale(1.1);
+    }
+
+    .three-dot-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        padding: 0;
+    }
+
+    /* Enhanced Modal Styles */
+    .modal-content {
+        border-radius: var(--border-radius);
+        border: none;
+        box-shadow: var(--shadow-medium);
+    }
+
+    .modal-header {
+        background: var(--light-bg);
+        border-bottom: 1px solid #dee2e6;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    /* Input Groups */
+    .input-group-text {
+        background-color: var(--light-bg);
+        border: 2px solid #e9ecef;
+        border-right: none;
+        border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm);
+    }
+
+    .input-group .form-control {
+        border-left: none;
+        border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+    }
+
+    /* Alerts */
+    .alert {
+        border-radius: var(--border-radius-sm);
+        border: none;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Loading Spinner */
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+        .admin-container {
+            padding: 1rem;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .table {
+            font-size: 0.85rem;
+            min-width: 600px;
+        }
+        
+        .btn-sm {
+            padding: 0.2rem 0.6rem;
+            font-size: 0.8rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .admin-container {
+            padding: 0.75rem;
+        }
+
+        .card-header {
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .table {
+            font-size: 0.8rem;
+            min-width: 500px;
+        }
+
+        .table thead th,
+        .table tbody td {
+            padding: 0.5rem 0.4rem;
+        }
+
+        .btn-sm {
+            padding: 0.15rem 0.5rem;
+            font-size: 0.75rem;
+            min-height: 32px;
+        }
+
+        .three-dot-btn {
+            width: 32px;
+            height: 32px;
+            font-size: 1rem;
+        }
+
+        .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
+        }
+
+        .action-group {
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .form-select-sm {
+            min-width: 80px;
+        }
+
+        /* Stack form fields on mobile */
+        .row.g-3 > .col-md-6 {
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .admin-container {
+            padding: 0.5rem;
+        }
+
+        .table {
+            min-width: 450px;
+            font-size: 0.75rem;
+        }
+
+        .btn {
+            font-size: 0.8rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+        }
+
+        .card-header {
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .table-wrapper {
+            max-height: 400px;
+        }
+
+        /* Horizontal scroll indicator */
+        .table-container::after {
+            content: "← Scroll horizontally to see more →";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 85, 170, 0.1);
+            text-align: center;
+            padding: 0.25rem;
+            font-size: 0.7rem;
+            color: var(--primary-color);
+            display: block;
+        }
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+        .card {
+            border: 2px solid #000;
+        }
+        
+        .btn {
+            border-width: 2px;
+        }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+        * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    /* Focus indicators for accessibility */
+    .btn:focus,
+    .form-control:focus,
+    .form-select:focus {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+</style>
+
+<div class="container-fluid admin-container">
+    {% if is_authorized %}
+        <h1 class="mb-4 fw-bold text-dark">User Management</h1>
+        
+        <!-- Debug Session Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Session Information
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Email:</strong> {{ session['email'] | default('Not set', true) }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-0"><strong>Role:</strong> {{ session['role'] | default('Not set', true) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Add User Form -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-person-plus me-2"></i>Add New User
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('admin.admin_users') }}" method="POST">
+                    <input type="hidden" name="action" value="add_user">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email (@megaserve.tech)</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="user@megaserve.tech" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="role" class="form-label">Role</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="">Select Role</option>
+                                    <option value="user">User</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="confirm_password" class="form-label">Confirm Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="code" class="form-label">Security Code</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                                <input type="text" class="form-control" id="code" name="code" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Add User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- User List -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-people me-2"></i>Manage Users
+            </div>
+            <div class="card-body p-0">
+                <div class="table-container">
+                    <div class="table-wrapper">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Code</th>
+                                    <th>Actions</th>
+                                    <th>Settings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if users %}
+                                    {% for user in users %}
+                                        <tr>
+                                            <td>{{ user.email }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ 'primary' if user.role == 'admin' else 'secondary' }}">
+                                                    {{ user.role | capitalize }}
+                                                </span>
+                                            </td>
+                                            <td>{{ user.code }}</td>
+                                            <td>
+                                                <div class="action-group">
+                                                    <!-- Update Role Form -->
+                                                    <form action="{{ url_for('admin.admin_users') }}" method="POST" class="d-inline-flex align-items-center">
+                                                        <input type="hidden" name="action" value="update_role">
+                                                        <input type="hidden" name="email" value="{{ user.email }}">
+                                                        <select name="new_role" class="form-select form-select-sm me-2" style="min-width: 90px;" required>
+                                                            <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
+                                                            <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                                                        </select>
+                                                        <button type="submit" class="btn btn-sm btn-primary" title="Update Role">
+                                                            <i class="bi bi-arrow-repeat"></i>
+                                                        </button>
+                                                    </form>
+                                                    <!-- Delete User Form -->
+                                                    <form action="{{ url_for('admin.admin_users') }}" method="POST" class="d-inline">
+                                                        <input type="hidden" name="action" value="delete_user">
+                                                        <input type="hidden" name="email" value="{{ user.email }}">
+                                                        <button type="submit" class="btn btn-sm btn-danger" title="Delete User" onclick="return confirm('Are you sure you want to delete {{ user.email }}?');">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <!-- Three-Dot Menu -->
+                                                <button class="three-dot-btn" data-bs-toggle="modal" data-bs-target="#changePasswordModal" onclick="setModalUser('{{ user.email }}')" title="Change Password/Code">
+                                                    <span class="three-dot-icon">⋮</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No users found.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password/Code Modal -->
+        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="changePasswordModalLabel">Change Password/Code</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="changePasswordForm" action="{{ url_for('admin.admin_users') }}" method="POST">
+                            <input type="hidden" name="action" value="change_password">
+                            <input type="hidden" name="email" id="modalEmail">
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                    <input type="password" class="form-control" id="new_password" name="new_password" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirm_new_password" class="form-label">Confirm Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                    <input type="password" class="form-control" id="confirm_new_password" name="confirm_new_password" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_code" class="form-label">New Security Code</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                                    <input type="text" class="form-control" id="new_code" name="new_code" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100" id="modalSubmitBtn">
+                                <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+                                <span class="btn-text">Update</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Access Denied: You are not authorized to view this page.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- JavaScript for Modal and Form Submission -->
+<script>
+    // Set Modal User Email and Title
+    function setModalUser(email) {
+        document.getElementById('modalEmail').value = email;
+        document.getElementById('changePasswordModalLabel').textContent = `Change Password/Code for ${email}`;
+    }
+
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize Bootstrap tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Add keyboard navigation support
+        document.addEventListener('keydown', function(e) {
+            // Escape key closes modals
+            if (e.key === 'Escape') {
+                const openModal = document.querySelector('.modal.show');
+                if (openModal) {
+                    bootstrap.Modal.getInstance(openModal).hide();
+                }
+            }
+        });
+        
+        // Add touch-friendly interactions for mobile
+        if ('ontouchstart' in window) {
+            document.body.classList.add('touch-device');
+        }
+    });
+
+    // Handle Form Submission with Loading Spinner
+    document.getElementById('changePasswordForm').addEventListener('submit', function (e) {
+        const submitBtn = document.getElementById('modalSubmitBtn');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        const btnText = submitBtn.querySelector('.btn-text');
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+        btnText.textContent = 'Updating...';
+        
+        // Reset button state after form submission (in case of validation errors)
+        setTimeout(() => {
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+            btnText.textContent = 'Update';
+        }, 3000);
+    });
+
+    // Handle responsive table actions
+    function handleTableResize() {
+        const tableContainer = document.querySelector('.table-container');
+        const table = document.querySelector('.table');
+        
+        if (table && table.scrollWidth > tableContainer.clientWidth) {
+            tableContainer.classList.add('has-horizontal-scroll');
+        } else if (tableContainer) {
+            tableContainer.classList.remove('has-horizontal-scroll');
+        }
+    }
+
+    // Monitor table size changes
+    window.addEventListener('resize', handleTableResize);
+    document.addEventListener('DOMContentLoaded', handleTableResize);
+</script>
+{% endblock %}

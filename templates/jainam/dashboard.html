@@ -1,0 +1,1690 @@
+{% extends "base.html" %}
+
+{% block title %}Partner Share Analysis Dashboard{% endblock %}
+
+{% block content %}
+<style scoped>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    :root {
+        --bg-primary: #f8fafc;
+        --bg-secondary: #ffffff;
+        --bg-accent: #f1f5f9;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --profit-color: #16a34a;
+        --loss-color: #dc2626;
+        --border-color: #e2e8f0;
+        --primary-blue: #3b82f6;
+        --primary-blue-dark: #2563eb;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --radius: 0.5rem;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    .header {
+        margin-bottom: 2rem;
+    }
+
+    .header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+    .header h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    .header p {
+        font-size: 1.125rem;
+        color: var(--text-secondary);
+    }
+
+    .tabs {
+        display: flex;
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        padding: 0.25rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+    }
+
+    .tab {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-weight: 500;
+        border-radius: calc(var(--radius) - 0.25rem);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+    }
+
+    .tab.active {
+        background: var(--primary-blue);
+        color: white;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .tab:hover:not(.active) {
+        background: var(--bg-accent);
+        color: var(--text-primary);
+    }
+
+    .card {
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(135deg, var(--bg-secondary), var(--bg-accent));
+    }
+
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .card-content {
+        padding: 1.5rem;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-input, .form-select {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        font-size: 0.875rem;
+        transition: border-color 0.2s ease;
+        background: var(--bg-secondary);
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: var(--radius);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-blue);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-blue-dark);
+    }
+
+    .btn-success {
+        background: var(--profit-color);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #15803d;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+    }
+
+    .partner-table-container {
+        max-height: 400px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary-blue) var(--bg-accent);
+    }
+
+    .partner-table-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .partner-table-container::-webkit-scrollbar-track {
+        background: var(--bg-accent);
+        border-radius: var(--radius);
+    }
+
+    .partner-table-container::-webkit-scrollbar-thumb {
+        background: var(--primary-blue);
+        border-radius: var(--radius);
+    }
+
+    .partner-table-container::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-blue-dark);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--bg-secondary);
+        min-width: 800px;
+    }
+
+    .table th {
+        background: var(--bg-accent);
+        padding: 1rem 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+
+    .table tr:hover {
+        background: var(--bg-accent);
+    }
+
+    .partner-row {
+        background-color: #ddc883 !important;
+    }
+
+    .total-row {
+        font-weight: bold;
+        background-color: #e2e8f0;
+    }
+
+    .text-profit {
+        color: var(--profit-color);
+        font-weight: 600;
+    }
+
+    .text-loss {
+        color: var(--loss-color);
+        font-weight: 600;
+    }
+
+    .partner-section {
+        margin-bottom: 0.5rem;
+        padding: 1rem;
+        border: 1px solid #a6bce8;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+    }
+
+    .partner-header {
+        background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+        color: white;
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        font-size: 1.125rem;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        border-radius: 0.25rem;
+        background: var(--bg-accent);
+        color: var(--text-primary);
+    }
+
+    .badge-outline {
+        background: transparent;
+        border: 1px solid var(--border-color);
+    }
+
+    .export-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
+    .rows-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+
+    .divider {
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .partner-card {
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .partner-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .partner-card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .partner-stats {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+    }
+
+    .partner-stats span {
+        color: var(--text-muted);
+    }
+
+    .partner-stats .value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .partner-stats .text-success {
+        color: var(--profit-color);
+    }
+
+    .badge-success {
+        background-color: #d1fae5;
+        color: var(--profit-color);
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .chart-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .chart {
+        flex: 1;
+        min-width: 300px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        padding: 1rem;
+        box-shadow: var(--shadow-md);
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stats-card {
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .user-partner-card {
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 1rem;
+        padding: 1rem;
+        display: none;
+    }
+
+    .user-partner-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .user-partner-card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .user-partner-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.5rem;
+        padding-top: 0.5rem;
+    }
+
+    .user-partner-stats span {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .user-partner-stats .value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.25rem;
+        margin-top: 1rem;
+    }
+
+    .page-item {
+        display: inline-flex;
+    }
+
+    .page-link {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .page-item.active .page-link {
+        background: var(--primary-blue);
+        color: white;
+        border-color: var(--primary-blue);
+    }
+
+    .page-item.disabled .page-link {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        background: var(--bg-accent);
+    }
+
+    .page-link:hover:not(.disabled) {
+        background: var(--bg-accent);
+        border-color: var(--primary-blue);
+    }
+
+    /* Styles for Summary Tab */
+    .summary-table-container {
+        display: flex;
+        width: 98%;
+        max-width: 1400px;
+        margin: 0 auto;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        background-color: #ffffff;
+        border: 1px solid #dcdcdc;
+        max-height: 500px;
+    }
+
+    .frozen-columns {
+        flex-shrink: 0;
+        background-color: #ffffff;
+        border-right: 1px solid #c8d3e0;
+        z-index: 10;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary-blue) var(--bg-accent);
+    }
+
+    .frozen-columns::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .frozen-columns::-webkit-scrollbar-track {
+        background: var(--bg-accent);
+        border-radius: var(--radius);
+    }
+
+    .frozen-columns::-webkit-scrollbar-thumb {
+        background: var(--primary-blue);
+        border-radius: var(--radius);
+    }
+
+    .frozen-columns::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-blue-dark);
+    }
+
+    .scrollable-columns {
+        overflow-x: auto;
+        flex-grow: 1;
+        background-color: #ffffff;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--primary-blue) var(--bg-accent);
+    }
+
+    .scrollable-columns::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .scrollable-columns::-webkit-scrollbar-track {
+        background: var(--bg-accent);
+        border-radius: var(--radius);
+    }
+
+    .scrollable-columns::-webkit-scrollbar-thumb {
+        background: var(--primary-blue);
+        border-radius: var(--radius);
+    }
+
+    .scrollable-columns::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-blue-dark);
+    }
+
+    .summary-table-container table {
+        border-collapse: collapse;
+        width: auto;
+        min-width: 100%;
+        table-layout: fixed;
+    }
+
+    .summary-table-container th, .summary-table-container td {
+        border: 1px solid #e0e6ed;
+        padding: 14px 20px;
+        text-align: left;
+        white-space: nowrap;
+        transition: background-color 0.3s ease, color 0.3s ease;
+        font-size: 0.95em;
+    }
+
+    .summary-table-container th {
+        background-color: #f7f9fc;
+        color: #555;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        font-weight: 600;
+        border-bottom: 2px solid #aebfd4;
+        text-transform: uppercase;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.9em;
+    }
+
+    .summary-table-container .frozen-columns tbody tr:not(.overall-grand-total-row):hover,
+    .summary-table-container .scrollable-columns tbody tr:not(.overall-grand-total-row):hover {
+        background-color: #e0f2f7;
+        cursor: pointer;
+    }
+
+    .summary-table-container .frozen-columns th:nth-child(1), .summary-table-container .frozen-columns td:nth-child(1) { 
+        width: 70px; 
+        min-width: 70px; 
+        font-weight: 600; 
+        color: #007bff; 
+        cursor: pointer; 
+    }
+    .summary-table-container .frozen-columns th:nth-child(2), .summary-table-container .frozen-columns td:nth-child(2) { width: 100px; min-width: 100px; }
+    .summary-table-container .frozen-columns th:nth-child(3), .summary-table-container .frozen-columns td:nth-child(3) { width: 80px; min-width: 80px; }
+    .summary-table-container .frozen-columns th:nth-child(4), .summary-table-container .frozen-columns td:nth-child(4) { width: 100px; min-width: 100px; }
+
+    .summary-table-container .scrollable-columns th, .summary-table-container .scrollable-columns td {
+        width: 100px;
+        min-width: 100px;
+    }
+
+    .summary-table-container .header-group {
+        text-align: center;
+        background-color: #e8f0f8;
+        color: #444;
+        padding: 8px 0;
+        border-bottom: 1px solid #aebfd4;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .summary-table-container .positive {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .summary-table-container .negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .summary-table-container .zero {
+        color: #6c757d;
+        font-weight: 400;
+    }
+
+    .summary-table-container .overall-grand-total-row {
+        background-color: #add8e6;
+        font-weight: 700;
+        border-top: 3px solid #1a4a72;
+        border-bottom: 3px solid #1a4a72;
+    }
+
+    .summary-table-container .overall-grand-total-row td {
+        padding: 18px 20px;
+        font-size: 1.05em;
+        color: #1a4a72;
+    }
+
+    .summary-table-container .overall-grand-total-row td:first-child {
+        text-align: center;
+        font-size: 1.1em;
+        letter-spacing: 0.5px;
+    }
+
+    .summary-table-container .overall-grand-total-row .positive, 
+    .summary-table-container .overall-grand-total-row .negative, 
+    .summary-table-container .overall-grand-total-row .zero {
+        color: inherit;
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+        }
+
+        .tabs {
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table {
+            min-width: 600px;
+        }
+
+        .table-container {
+            max-height: none;
+        }
+
+        .user-partner-card {
+            display: block;
+        }
+
+        .user-partner-table-container {
+            display: none;
+        }
+
+        .partner-card {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .partner-table-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .partner-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .partner-stats {
+            justify-content: flex-start;
+        }
+    }
+
+    @media (min-width: 769px) {
+        .user-partner-table-container {
+            display: block;
+        }
+
+        .user-partner-card {
+            display: none;
+        }
+    }
+</style>
+
+<div class="container">
+    <!-- Header -->
+    <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Partner Distribution</h2>
+    <div>
+        <a href="{{ url_for('jainam.index') }}" class="btn btn-primary" id="jainam-data-link">
+            <i class="fas fa-download"></i> Jainam Data
+        </a>
+    </div>
+</div>
+
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button class="tab active" data-tab="summary">
+            <i class="fas fa-table"></i> Summary
+        </button>
+        <button class="tab" data-tab="partners-wise">
+            <i class="fas fa-filter"></i> Partners Wise
+        </button>
+        <button class="tab" data-tab="user-partner-details">
+            <i class="fas fa-users"></i> User and Partner Details
+        </button>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fas fa-filter"></i> Filters & Navigation
+            </div>
+        </div>
+        <div class="card-content">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="date_range">Date Range</label>
+                    <input type="text" class="form-input" id="date_range" name="date_range" placeholder="Select date or range" autocomplete="off" value="{{ unique_dates | max if unique_dates else '' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="user_id">User ID</label>
+                    <select id="user_id" name="user_id" class="form-select">
+                        <option value="" selected>All User IDs</option>
+                        {% for group in grouped_data %}
+                            <option value="{{ group.main.user_id }}" {% if user_id == group.main.user_id %}selected{% endif %}>{{ group.main.user_id }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="partner">Partner</label>
+                    <select id="partner" name="partner" class="form-select">
+                        <option value="" selected>All Partners</option>
+                        {% for partner_name in partner_stats.keys() %}
+                            <option value="{{ partner_name }}" {% if partner == partner_name %}selected{% endif %}>{{ partner_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="algo">Algo</label>
+                    <select id="algo" name="algo" class="form-select">
+                        <option value="" selected>All Algos</option>
+                        {% for algo_name in algo_wise_data.keys() %}
+                            <option value="{{ algo_name }}" {% if algo == algo_name %}selected{% endif %}>{{ algo_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <!-- <div style="margin-top: 1rem;">
+                <a href="{{ url_for('jainam.index') }}" class="btn btn-primary" id="jainam-data-link">
+                    <i class="fas fa-download"></i> Jainam Data
+                </a>
+            </div> -->
+        </div>
+    </div>
+
+    <!-- Summary Tab Content -->
+    <div class="tab-content active" id="summary-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-table"></i> Financial Summary
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="summary-table-container">
+                    <div class="frozen-columns">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th rowspan="2">Partner ID</th>
+                                    <th colspan="3" class="header-group">Total</th>
+                                </tr>
+                                <tr>
+                                    <th>Avg Allocation</th>
+                                    <th>MTM%</th>
+                                    <th>MTM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summaryTableBodyFrozen">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="scrollable-columns" id="scrollable-columns">
+                        <table>
+                            <thead>
+                                <tr id="date-headers">
+                                    <!-- Dates will be dynamically populated -->
+                                </tr>
+                                <tr id="sub-headers">
+                                    <!-- Sub-headers (Allocation, MTM, MTM%) will be dynamically populated -->
+                                </tr>
+                            </thead>
+                            <tbody id="summaryTableBodyScrollable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Partners Wise Tab Content -->
+    <div class="tab-content" id="partners-wise-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="export-controls">
+                    <div class="card-title">
+                        <i class="fas fa-filter"></i> Partners Wise Analysis
+                    </div>
+                    <div class="rows-control">
+                        <a href="{{ url_for('jainam.export_partner_stats') }}" class="btn btn-success" id="export-partners-wise">
+                            <i class="fas fa-download"></i> Export CSV
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-content">
+                <div id="partners-wise-container">
+                    {% for partner, stats in partner_stats.items() %}
+                        {% set dates = stats.users|map(attribute='date')|select('defined')|list %}
+                        {% set min_date = dates|min if dates else '' %}
+                        {% set max_date = dates|max if dates else '' %}
+                        <div class="partner-card">
+                            <div class="partner-card-header">
+                                <h3 class="partner-card-title">
+                                    {{ partner }} {% if min_date and max_date and min_date != max_date %}({{ min_date }} - {{ max_date }}){% elif min_date %}({{ min_date }}){% else %}(No Data){% endif %}
+                                </h3>
+                                <div class="partner-stats" style="margin-left: auto;">
+                                    <span>Avg Allocation: <span class="value">{{ (stats.total_allocation|default(0)|float)|round(2) }}</span></span>
+                                    <span>MTM%: <span class="value text-success">{{ ((stats.total_mtm|default(0)|float / stats.total_allocation|default(0)|float) * 100)|round(2) if stats.total_allocation|default(0)|float != 0 else 0 }}%</span></span>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="partner-table-container">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>User ID</th>
+                                                <th>Algos</th>
+                                                <th>Allocation</th>
+                                                <th>MTM</th>
+                                                <th>MTM%</th>
+                                                <th>Max Loss</th>
+                                                <th>Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% set last_date = '' %}
+                                            {% set total_allocation = 0 %}
+                                            {% set total_mtm = 0 %}
+                                            {% set total_max_loss = 0 %}
+                                            {% for user in stats.users|sort(attribute='date', reverse=True) %}
+                                                {% if user.date != last_date and last_date %}
+                                                    <tr class="divider">
+                                                        <td colspan="7"></td>
+                                                    </tr>
+                                                {% endif %}
+                                                <tr>
+                                                    <td>{{ user.user_id }}</td>
+                                                    <td>{{ user.algo }}</td>
+                                                    <td>{{ (user.allocation|float)|round(2) }}</td>
+                                                    <td class="{% if user.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ (user.mtm|float)|round(2) }}</td>
+                                                    <td class="{% if user.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ ((user.mtm|float / user.allocation|float) * 100)|round(2) if user.allocation|float != 0 else 0 }}%</td>
+                                                    <td class="text-loss">{{ (user.max_loss|float)|round(2) }}</td>
+                                                    <td>{{ user.date|default('') }}</td>
+                                                </tr>
+                                                {% set total_allocation = total_allocation + (user.allocation|float) %}
+                                                {% set total_mtm = total_mtm + (user.mtm|float) %}
+                                                {% set total_max_loss = total_max_loss + (user.max_loss|float) %}
+                                                {% set last_date = user.date %}
+                                            {% else %}
+                                                <tr>
+                                                    <td colspan="7" class="text-center">No data available</td>
+                                                </tr>
+                                            {% endfor %}
+                                            {% if stats.users %}
+                                                <tr class="total-row">
+                                                    <td colspan="2"><strong>Total</strong></td>
+                                                    <td><strong>{{ total_allocation|round(2) }}</strong></td>
+                                                    <td class="{% if total_mtm >= 0 %}text-profit{% else %}text-loss{% endif %}"><strong>{{ total_mtm|round(2) }}</strong></td>
+                                                    <td class="{% if total_mtm >= 0 %}text-profit{% else %}text-loss{% endif %}"><strong>{{ ((total_mtm|float / total_allocation|float) * 100)|round(2) if total_allocation|float != 0 else 0 }}%</strong></td>
+                                                    <td class="text-loss"><strong>{{ total_max_loss|round(2) }}</strong></td>
+                                                    <td></td>
+                                                </tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User and Partner Details Tab Content -->
+    <div class="tab-content" id="user-partner-details-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="export-controls">
+                    <div class="card-title">
+                        <i class="fas fa-users"></i> User and Partner Details
+                    </div>
+                    <div class="rows-control">
+                        <a href="{{ url_for('jainam.export_user_partner_details') }}" class="btn btn-success" id="export-user-partner">
+                            <i class="fas fa-download"></i> Export CSV
+                        </a>
+                        <label class="form-label" for="rows_per_page">Rows per page:</label>
+                        <select id="rows_per_page" class="form-select" style="width: auto;">
+                            {% for option in [50, 100, 500, 1000] %}
+                                <option value="{{ option }}" {% if rows_per_page == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="card-content">
+                <!-- Table View -->
+                <div class="table-container user-partner-table-container">
+                    <table class="table table-striped table-hover" style="min-width: 1200px;">
+                        <thead style="position: sticky; top: 0; z-index: 2; background: #fff;">
+                            <tr>
+                                <th>User ID</th>
+                                <th>Alias</th>
+                                <th>Partner</th>
+                                <th>Allocation</th>
+                                <th>MTM</th>
+                                <th>MTM%</th>
+                                <th>Max Loss</th>
+                                <th>Algos</th>
+                                <th>Broker</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-partner-table-body">
+                            {% for group in grouped_data|sort(attribute='main.date', reverse=True) %}
+                                <tr>
+                                    <td><strong>{{ group.main.user_id }}</strong></td>
+                                    <td>{{ group.main.alias }}</td>
+                                    <td></td>
+                                    <td>{{ (group.main.allocation|default(0)|float)|round(2) }}</td>
+                                    <td class="{% if group.main.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ (group.main.mtm|default(0)|float)|round(2) }}</td>
+                                    <td class="{% if group.main.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ ((group.main.mtm|float / group.main.allocation|float) * 100)|round(2) if group.main.allocation|float != 0 else 0 }}%</td>
+                                    <td class="text-loss">{{ (group.main.max_loss|default(0)|float)|round(2) }}</td>
+                                    <td><span class="badge">{{ group.main.algo }}</span></td>
+                                    <td>{{ group.main.broker }}</td>
+                                    <td>{{ group.main.date }}</td>
+                                </tr>
+                                {% for partner in group.partners|sort(attribute='partner_alias') %}
+                                    <tr class="partner-row" data-is-main="false">
+                                        <td>{{ partner.user_id }}</td>
+                                        <td>{{ group.main.alias }}</td>
+                                        <td><span class="badge badge-outline">{{ partner.partner_alias }}</span></td>
+                                        <td>{{ (partner.allocation|default(0)|float)|round(2) }}</td>
+                                        <td class="{% if partner.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ (partner.mtm|default(0)|float)|round(2) }}</td>
+                                        <td class="{% if partner.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ ((partner.mtm|float / partner.allocation|float) * 100)|round(2) if partner.allocation|float != 0 else 0 }}%</td>
+                                        <td class="text-loss">{{ (partner.max_loss|default(0)|float)|round(2) }}</td>
+                                        <td><span class="badge">{{ partner.algo }}</span></td>
+                                        <td>{{ partner.broker }}</td>
+                                        <td>{{ partner.date }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Card View for Mobile -->
+                <div class="user-partner-card-container">
+                    {% for group in grouped_data|sort(attribute='main.date', reverse=True) %}
+                        <div class="user-partner-card">
+                            <div class="user-partner-card-header">
+                                <h3 class="user-partner-card-title">{{ group.main.user_id }}</h3>
+                            </div>
+                            <div class="user-partner-stats">
+                                <span>Alias: <span class="value">{{ group.main.alias }}</span></span>
+                                <span>Allocation: <span class="value">{{ (group.main.allocation|default(0)|float)|round(2) }}</span></span>
+                                <span>MTM: <span class="value {% if group.main.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ (group.main.mtm|default(0)|float)|round(2) }}</span></span>
+                                <span>MTM%: <span class="value {% if group.main.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ ((group.main.mtm|float / group.main.allocation|float) * 100)|round(2) if group.main.allocation|float != 0 else 0 }}%</span></span>
+                                <span>Max Loss: <span class="value text-loss">{{ (group.main.max_loss|default(0)|float)|round(2) }}</span></span>
+                                <span>Algo: <span class="value">{{ group.main.algo }}</span></span>
+                                <span>Broker: <span class="value">{{ group.main.broker }}</span></span>
+                                <span>Date: <span class="value">{{ group.main.date }}</span></span>
+                            </div>
+                            {% if group.partners %}
+                                <div class="partner-section">
+                                    <u><h4>Partners</h4></u>
+                                    {% for partner in group.partners|sort(attribute='partner_alias') %}
+                                        <div class="user-partner-card" style="margin-top: 1rem; border-color: #ddc883;">
+                                            <div class="user-partner-card-header">
+                                                <h3 class="user-partner-card-title">{{ partner.user_id }}</h3>
+                                            </div>
+                                            <div class="user-partner-stats">
+                                                <span>Partner Alias: <span class="value">{{ partner.partner_alias }}</span></span>
+                                                <span>Allocation: <span class="value">{{ (partner.allocation|default(0)|float)|round(2) }}</span></span>
+                                                <span>MTM: <span class="value {% if partner.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ (partner.mtm|default(0)|float)|round(2) }}</span></span>
+                                                <span>MTM%: <span class="value {% if partner.mtm >= 0 %}text-profit{% else %}text-loss{% endif %}">{{ ((partner.mtm|float / partner.allocation|float) * 100)|round(2) if partner.allocation|float != 0 else 0 }}%</span></span>
+                                                <span>Max Loss: <span class="value text-loss">{{ (partner.max_loss|default(0)|float)|round(2) }}</span></span>
+                                                <span>Algo: <span class="value">{{ partner.algo }}</span></span>
+                                                <span>Broker: <span class="value">{{ partner.broker }}</span></span>
+                                                <span>Date: <span class="value">{{ partner.date }}</span></span>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        {% set max_page_links = 3 %}
+                        {% set page_range = (page - 1) // max_page_links * max_page_links %}
+                        {% set start_page = page_range + 1 %}
+                        {% set end_page = [page_range + max_page_links, total_pages]|min %}
+                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="#" onclick="changePage(1)"> << </a>
+                        </li>
+                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="#" onclick="changePage({{ page - 1 }})"> < </a>
+                        </li>
+                        {% for p in range(start_page, end_page + 1) %}
+                            <li class="page-item {% if p == page %}active{% endif %}">
+                                <a class="page-link" href="#" onclick="changePage({{ p }})">{{ p }}</a>
+                            </li>
+                        {% endfor %}
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="#" onclick="changePage({{ page + 1 }})"> > </a>
+                        </li>
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="#" onclick="changePage({{ total_pages }})"> >> </a>
+                        </li>
+                    </ul>
+                </nav>
+                <p class="text-center mb-0" id="page-info">{{ page }} of {{ total_pages }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    // Utility Functions
+    function formatIndianNumber(value) {
+        value = parseFloat(value).toFixed(2);
+        let [integer, decimal] = value.split('.');
+        let lastThree = integer.slice(-3);
+        let otherNumbers = integer.slice(0, -3);
+        if (otherNumbers !== '') {
+            lastThree = ',' + lastThree;
+        }
+        let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
+        return decimal ? formatted + '.' + decimal : formatted;
+    }
+
+    function calculateMTMPercentage(mtm, allocation) {
+        return allocation > 0 ? ((mtm / allocation) * 100).toFixed(2) : '0.00';
+    }
+
+    function formatCurrency(value) {
+        return formatIndianNumber(value);
+    }
+
+    function getMTMClass(value) {
+        return value >= 0 ? 'text-profit' : 'text-loss';
+    }
+
+    function getClassForMTM(mtmPercent) {
+        const val = parseFloat(mtmPercent.replace('%', ''));
+        if (val > 0) return 'positive';
+        if (val < 0) return 'negative';
+        return 'zero';
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(func, wait);
+        };
+    }
+
+    function initializeTabs() {
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${tabId}-content`).classList.add('active');
+                
+                updateDashboard(1);
+            });
+        });
+
+        // Ensure Summary tab is active on page load
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+        document.querySelector('.tab[data-tab="summary"]').classList.add('active');
+        document.getElementById('summary-content').classList.add('active');
+    }
+
+    function syncScroll() {
+        const frozenColumns = document.querySelector('.frozen-columns');
+        const scrollableColumns = document.querySelector('.scrollable-columns');
+        scrollableColumns.addEventListener('scroll', () => {
+            frozenColumns.scrollTop = scrollableColumns.scrollTop;
+        });
+        frozenColumns.addEventListener('scroll', () => {
+            scrollableColumns.scrollTop = frozenColumns.scrollTop;
+        });
+    }
+
+    function updateDashboard(page = 1) {
+        const dateRange = document.getElementById('date_range').value.split(' to ');
+        const date_filter = dateRange.length === 1 ? dateRange[0] : '';
+        const start_date = dateRange.length > 1 ? dateRange[0] : '';
+        const end_date = dateRange.length > 1 ? dateRange[1] : '';
+        const user_id = document.getElementById('user_id').value || '';
+        const partner = document.getElementById('partner').value || '';
+        const algo = document.getElementById('algo').value || '';
+        const rows_per_page = document.getElementById('rows_per_page').value;
+        const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
+
+        $.ajax({
+            url: "{{ url_for('jainam.dashboard') }}",
+            type: "GET",
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: {
+                start_date: start_date,
+                end_date: end_date,
+                date: date_filter,
+                user_id: user_id,
+                partner: partner,
+                algo: algo,
+                rows_per_page: rows_per_page,
+                page: page
+            },
+            success: function(response) {
+                // Update Partner Statistics (Partners Wise tab)
+                if (activeTab === 'partners-wise') {
+                    const container = $('#partners-wise-container');
+                    container.empty();
+                    if (response.partner_stats) {
+                        Object.keys(response.partner_stats).forEach(partner => {
+                            const stats = response.partner_stats[partner];
+                            let totalMTM = 0;
+                            let totalMaxLoss = 0;
+                            const userAllocations = {};
+
+                            // Filter users by algo if specified
+                            const filteredUsers = algo ? stats.users.filter(user => user.algo === algo) : stats.users;
+
+                            // Group allocations by user_id and calculate average
+                            filteredUsers.forEach(user => {
+                                totalMTM += parseFloat(user.mtm || 0);
+                                totalMaxLoss += parseFloat(user.max_loss || 0);
+                                if (!userAllocations[user.user_id]) {
+                                    userAllocations[user.user_id] = { allocations: [], algo: user.algo, date: user.date };
+                                }
+                                userAllocations[user.user_id].allocations.push(parseFloat(user.allocation || 0));
+                            });
+
+                            // Calculate average allocation per user and sum them
+                            let totalAllocation = 0;
+                            Object.keys(userAllocations).forEach(userId => {
+                                const allocations = userAllocations[userId].allocations;
+                                const avgAllocation = allocations.length > 0 ? 
+                                    allocations.reduce((sum, alloc) => sum + alloc, 0) / allocations.length : 0;
+                                totalAllocation += avgAllocation;
+                            });
+
+                            const dates = filteredUsers.map(user => user.date).filter(date => date);
+                            const minDate = dates.length ? dates.reduce((a, b) => a < b ? a : b) : '';
+                            const maxDate = dates.length ? dates.reduce((a, b) => a > b ? a : b) : '';
+                            let html = `<div class="partner-card">`;
+                            html += `<div class="partner-card-header">`;
+                            html += `<h3 class="partner-card-title">${partner} ${minDate && maxDate && minDate !== maxDate ? '(' + minDate + ' - ' + maxDate + ')' : minDate ? '(' + minDate + ')' : '(No Data)'}</h3>`;
+                            html += `<div class="partner-stats">`;
+                            html += `<span>Avg Allocation: <span class="value">${formatIndianNumber(totalAllocation)}</span></span>`;
+                            html += `<span>MTM%: <span class="value text-success">${calculateMTMPercentage(totalMTM, totalAllocation)}%</span></span>`;
+                            html += `</div></div>`;
+                            html += `<div class="card-content">`;
+                            html += `<div class="partner-table-container">`;
+                            html += `<table class="table table-striped table-hover">`;
+                            html += `<thead><tr><th>User ID</th><th>Algos</th><th>Allocation</th><th>MTM</th><th>MTM%</th><th>Max Loss</th><th>Date</th></tr></thead>`;
+                            html += `<tbody>`;
+                            let lastDate = '';
+                            filteredUsers.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(user => {
+                                if (user.date !== lastDate && lastDate) {
+                                    html += `<tr class="divider"><td colspan="7"></td></tr>`;
+                                }
+                                html += `<tr>`;
+                                html += `<td>${user.user_id}</td>`;
+                                html += `<td>${user.algo || ''}</td>`;
+                                html += `<td>${formatIndianNumber(user.allocation || 0)}</td>`;
+                                html += `<td class="${getMTMClass(user.mtm)}">${formatIndianNumber(user.mtm || 0)}</td>`;
+                                html += `<td class="${getMTMClass(user.mtm)}">${calculateMTMPercentage(user.mtm, user.allocation)}%</td>`;
+                                html += `<td class="text-loss">${formatIndianNumber(user.max_loss || 0)}</td>`;
+                                html += `<td>${user.date || ''}</td>`;
+                                html += `</tr>`;
+                                lastDate = user.date;
+                            });
+                            if (!filteredUsers.length) {
+                                html += `<tr><td colspan="7" class="text-center">No data available</td></tr>`;
+                            } else {
+                                html += `<tr class="total-row">`;
+                                html += `<td colspan="2"><strong>Total</strong></td>`;
+                                html += `<td><strong>${formatIndianNumber(totalAllocation)}</strong></td>`;
+                                html += `<td class="${getMTMClass(totalMTM)}"><strong>${formatIndianNumber(totalMTM)}</strong></td>`;
+                                html += `<td class="${getMTMClass(totalMTM)}"><strong>${calculateMTMPercentage(totalMTM, totalAllocation)}%</strong></td>`;
+                                html += `<td class="text-loss"><strong>${formatIndianNumber(totalMaxLoss)}</strong></td>`;
+                                html += `<td></td>`;
+                                html += `</tr>`;
+                            }
+                            html += `</tbody></table>`;
+                            html += `</div>`;
+                            html += `</div>`;
+                            html += `</div>`;
+                            if (filteredUsers.length > 0) {
+                                container.append(html);
+                            }
+                        });
+                        if (container.is(':empty')) {
+                            container.append('<div class="partner-section"><p>No partner statistics available for the selected algo</p></div>');
+                        }
+                    } else {
+                        container.append('<div class="partner-section"><p>No partner statistics available</p></div>');
+                    }
+                }
+
+                // Update User and Partner Details
+                if (activeTab === 'user-partner-details') {
+                    const tableBody = $('#user-partner-table-body');
+                    const cardContainer = $('.user-partner-card-container');
+                    tableBody.empty();
+                    cardContainer.empty();
+                    if (response.grouped_data && response.grouped_data.length) {
+                        // Filter grouped_data by algo
+                        const filteredGroupedData = algo ? response.grouped_data.filter(group => 
+                            group.main.algo === algo || group.partners.some(partner => partner.algo === algo)
+                        ) : response.grouped_data;
+
+                        filteredGroupedData.forEach(group => {
+                            // Apply algo filter to main and partners
+                            const mainMatchesAlgo = !algo || group.main.algo === algo;
+                            const filteredPartners = algo ? group.partners.filter(partner => partner.algo === algo) : group.partners;
+
+                            if (mainMatchesAlgo || filteredPartners.length > 0) {
+                                let tableHtml = '';
+                                if (mainMatchesAlgo) {
+                                    tableHtml += `<tr>`;
+                                    tableHtml += `<td><strong>${group.main.user_id}</strong></td>`;
+                                    tableHtml += `<td>${group.main.alias || ''}</td>`;
+                                    tableHtml += `<td></td>`;
+                                    tableHtml += `<td>${formatIndianNumber(group.main.allocation || 0)}</td>`;
+                                    tableHtml += `<td class="${getMTMClass(group.main.mtm)}">${formatIndianNumber(group.main.mtm || 0)}</td>`;
+                                    tableHtml += `<td class="${getMTMClass(group.main.mtm)}">${calculateMTMPercentage(group.main.mtm, group.main.allocation)}%</td>`;
+                                    tableHtml += `<td class="text-loss">${formatIndianNumber(group.main.max_loss || 0)}</td>`;
+                                    tableHtml += `<td><span class="badge">${group.main.algo || ''}</span></td>`;
+                                    tableHtml += `<td>${group.main.broker || ''}</td>`;
+                                    tableHtml += `<td>${group.main.date || ''}</td>`;
+                                    tableHtml += `</tr>`;
+                                }
+                                filteredPartners.forEach(partner => {
+                                    tableHtml += `<tr class="partner-row" data-is-main="false">`;
+                                    tableHtml += `<td>${partner.user_id}</td>`;
+                                    tableHtml += `<td>${group.main.alias || ''}</td>`;
+                                    tableHtml += `<td><span class="badge badge-outline">${partner.partner_alias || ''}</span></td>`;
+                                    tableHtml += `<td>${formatIndianNumber(partner.allocation || 0)}</td>`;
+                                    tableHtml += `<td class="${getMTMClass(partner.mtm)}">${formatIndianNumber(partner.mtm || 0)}</td>`;
+                                    tableHtml += `<td class="${getMTMClass(partner.mtm)}">${calculateMTMPercentage(partner.mtm, partner.allocation)}%</td>`;
+                                    tableHtml += `<td class="text-loss">${formatIndianNumber(partner.max_loss || 0)}</td>`;
+                                    tableHtml += `<td><span class="badge">${partner.algo || ''}</span></td>`;
+                                    tableHtml += `<td>${partner.broker || ''}</td>`;
+                                    tableHtml += `<td>${partner.date || ''}</td>`;
+                                    tableHtml += `</tr>`;
+                                });
+                                tableBody.append(tableHtml);
+
+                                let cardHtml = `<div class="user-partner-card">`;
+                                cardHtml += `<div class="user-partner-card-header">`;
+                                cardHtml += `<h3 class="user-partner-card-title">${group.main.user_id}</h3>`;
+                                cardHtml += `</div>`;
+                                cardHtml += `<div class="user-partner-stats">`;
+                                if (mainMatchesAlgo) {
+                                    cardHtml += `<span>Alias: <span class="value">${group.main.alias || ''}</span></span>`;
+                                    cardHtml += `<span>Allocation: <span class="value">${formatIndianNumber(group.main.allocation || 0)}</span></span>`;
+                                    cardHtml += `<span>MTM: <span class="value ${getMTMClass(group.main.mtm)}">${formatIndianNumber(group.main.mtm || 0)}</span></span>`;
+                                    cardHtml += `<span>MTM%: <span class="value ${getMTMClass(group.main.mtm)}">${calculateMTMPercentage(group.main.mtm, group.main.allocation)}%</span></span>`;
+                                    cardHtml += `<span>Max Loss: <span class="value text-loss">${formatIndianNumber(group.main.max_loss || 0)}</span></span>`;
+                                    cardHtml += `<span>Algo: <span class="value">${group.main.algo || ''}</span></span>`;
+                                    cardHtml += `<span>Broker: <span class="value">${group.main.broker || ''}</span></span>`;
+                                    cardHtml += `<span>Date: <span class="value">${group.main.date || ''}</span></span>`;
+                                }
+                                cardHtml += `</div>`;
+                                if (filteredPartners.length) {
+                                    cardHtml += `<div class="partner-section">`;
+                                    cardHtml += `<h4>Partners</h4>`;
+                                    filteredPartners.forEach(partner => {
+                                        cardHtml += `<div class="user-partner-card" style="margin-top: 1rem; border-color: #ddc883;">`;
+                                        cardHtml += `<div class="user-partner-card-header">`;
+                                        cardHtml += `<h3 class="user-partner-card-title">${partner.user_id}</h3>`;
+                                        cardHtml += `</div>`;
+                                        cardHtml += `<div class="user-partner-stats">`;
+                                        cardHtml += `<span>Partner Alias: <span class="value">${partner.partner_alias || ''}</span></span>`;
+                                        cardHtml += `<span>Allocation: <span class="value">${formatIndianNumber(partner.allocation || 0)}</span></span>`;
+                                        cardHtml += `<span>MTM: <span class="value ${getMTMClass(partner.mtm)}">${formatIndianNumber(partner.mtm || 0)}</span></span>`;
+                                        cardHtml += `<span>MTM%: <span class="value ${getMTMClass(partner.mtm)}">${calculateMTMPercentage(partner.mtm, partner.allocation)}%</span></span>`;
+                                        cardHtml += `<span>Max Loss: <span class="value text-loss">${formatIndianNumber(partner.max_loss || 0)}</span></span>`;
+                                        cardHtml += `<span>Algo: <span class="value">${partner.algo || ''}</span></span>`;
+                                        cardHtml += `<span>Broker: <span class="value">${partner.broker || ''}</span></span>`;
+                                        cardHtml += `<span>Date: <span class="value">${partner.date || ''}</span></span>`;
+                                        cardHtml += `</div>`;
+                                        cardHtml += `</div>`;
+                                    });
+                                    cardHtml += `</div>`;
+                                }
+                                cardHtml += `</div>`;
+                                cardContainer.append(cardHtml);
+                            }
+                        });
+                        if (filteredGroupedData.length === 0) {
+                            tableBody.append('<tr><td colspan="10" class="text-center">No data available for the selected algo</td></tr>');
+                            cardContainer.append('<div class="user-partner-card"><p class="text-center">No data available for the selected algo</p></div>');
+                        }
+                    } else {
+                        tableBody.append('<tr><td colspan="10" class="text-center">No data available</td></tr>');
+                        cardContainer.append('<div class="user-partner-card"><p class="text-center">No data available</p></div>');
+                    }
+
+                    const paginationContainer = $('#pagination');
+                    paginationContainer.empty();
+                    const totalPages = response.total_pages || 1;
+                    const currentPage = response.page || 1;
+                    const maxPageLinks = 3;
+                    const pageRange = Math.floor((currentPage - 1) / maxPageLinks) * maxPageLinks;
+                    const startPage = pageRange + 1;
+                    const endPage = Math.min(pageRange + maxPageLinks, totalPages);
+
+                    let paginationHtml = '';
+                    paginationHtml += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">`;
+                    paginationHtml += `<a class="page-link" href="#" onclick="changePage(1)"> << </a></li>`;
+                    paginationHtml += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">`;
+                    paginationHtml += `<a class="page-link" href="#" onclick="changePage(${currentPage - 1})"> < </a></li>`;
+                    for (let p = startPage; p <= endPage; p++) {
+                        paginationHtml += `<li class="page-item ${p === currentPage ? 'active' : ''}">`;
+                        paginationHtml += `<a class="page-link" href="#" onclick="changePage(${p})">${p}</a></li>`;
+                    }
+                    paginationHtml += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">`;
+                    paginationHtml += `<a class="page-link" href="#" onclick="changePage(${currentPage + 1})"> > </a></li>`;
+                    paginationHtml += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">`;
+                    paginationHtml += `<a class="page-link" href="#" onclick="changePage(${totalPages})"> >> </a></li>`;
+                    paginationContainer.append(paginationHtml);
+
+                    $('#page-info').text(`${currentPage} of ${totalPages}`);
+                }
+
+                // Update Summary Tab
+                if (activeTab === 'summary') {
+                    const frozenTableBody = $('#summaryTableBodyFrozen');
+                    const scrollableTableBody = $('#summaryTableBodyScrollable');
+                    const dateHeaders = $('#date-headers');
+                    const subHeaders = $('#sub-headers');
+
+                    if (!response.partner_stats || !Object.keys(response.partner_stats).length) {
+                        frozenTableBody.html('<tr><td colspan="4">No data available.</td></tr>');
+                        scrollableTableBody.html('<tr><td colspan="100"></td></tr>');
+                    } else {
+                        const uniqueDates = response.unique_dates || [];
+                        const displayDates = uniqueDates;
+
+                        let dateHeaderHtml = '';
+                        let subHeaderHtml = '';
+                        displayDates.forEach(date => {
+                            dateHeaderHtml += `<th colspan="3" class="header-group">${date}</th>`;
+                            subHeaderHtml += `
+                                <th>Allocation</th>
+                                <th>MTM</th>
+                                <th>MTM%</th>
+                            `;
+                        });
+                        dateHeaders.html(dateHeaderHtml);
+                        subHeaders.html(subHeaderHtml);
+
+                        let frozenHtml = '';
+                        let scrollableHtml = '';
+                        const dailyGrandTotals = Array(displayDates.length).fill(0).map(() => ({ alloc: 0, mtm: 0 }));
+                        let overallGrandAllocation = 0;
+                        let overallGrandMTM = 0;
+
+                        const partners = Object.keys(response.partner_stats).sort();
+                        partners.forEach(partner => {
+                            const stats = response.partner_stats[partner];
+                            const userAllocations = {};
+                            let totalMTM = 0;
+
+                            // Filter users by algo
+                            const filteredUsers = algo ? stats.users.filter(user => user.algo === algo) : stats.users;
+
+                            // Group by user_id and date to calculate averages
+                            filteredUsers.forEach(user => {
+                                totalMTM += parseFloat(user.mtm || 0);
+                                if (!userAllocations[user.user_id]) {
+                                    userAllocations[user.user_id] = {};
+                                }
+                                if (!userAllocations[user.user_id][user.date]) {
+                                    userAllocations[user.user_id][user.date] = { allocations: [], mtm: 0 };
+                                }
+                                userAllocations[user.user_id][user.date].allocations.push(parseFloat(user.allocation || 0));
+                                userAllocations[user.user_id][user.date].mtm += parseFloat(user.mtm || 0);
+                            });
+
+                            // Calculate average allocation per user per date
+                            const dateMap = {};
+                            displayDates.forEach(date => {
+                                dateMap[date] = { allocation: 0, mtm: 0, userCount: 0 };
+                                Object.keys(userAllocations).forEach(userId => {
+                                    if (userAllocations[userId][date]) {
+                                        const allocations = userAllocations[userId][date].allocations;
+                                        const avgAllocation = allocations.length > 0 ?
+                                            allocations.reduce((sum, alloc) => sum + alloc, 0) / allocations.length : 0;
+                                        dateMap[date].allocation += avgAllocation;
+                                        dateMap[date].mtm += userAllocations[userId][date].mtm;
+                                        dateMap[date].userCount += 1;
+                                    }
+                                });
+                            });
+
+                            // Calculate total average allocation (sum of per-user averages)
+                            let totalAllocation = 0;
+                            Object.keys(userAllocations).forEach(userId => {
+                                const userDates = Object.keys(userAllocations[userId]);
+                                let userTotalAllocation = 0;
+                                userDates.forEach(date => {
+                                    const allocations = userAllocations[userId][date].allocations;
+                                    const avgAllocation = allocations.length > 0 ?
+                                        allocations.reduce((sum, alloc) => sum + alloc, 0) / allocations.length : 0;
+                                    userTotalAllocation += avgAllocation;
+                                });
+                                totalAllocation += userTotalAllocation / userDates.length;
+                            });
+
+                            if (Object.keys(userAllocations).length > 0) {
+                                const mtmPc = totalAllocation !== 0 ? ((totalMTM / totalAllocation) * 100).toFixed(2) + '%' : '0.00%';
+                                const queryParams = [
+                                    start_date && `start_date=${encodeURIComponent(start_date)}`,
+                                    end_date && `end_date=${encodeURIComponent(end_date)}`,
+                                    algo && `algo=${encodeURIComponent(algo)}`
+                                ].filter(Boolean).join('&');
+                                frozenHtml += `
+                                    <tr>
+                                        <td><a href="/jainam/partner_details?id=${encodeURIComponent(partner)}${queryParams ? '&' + queryParams : ''}" target="_blank">${partner}</a></td>
+                                        <td>${formatIndianNumber(totalAllocation)}</td>
+                                        <td class="${getClassForMTM(mtmPc)}">${mtmPc}</td>
+                                        <td class="${getClassForMTM(mtmPc)}">${formatIndianNumber(totalMTM)}</td>
+                                    </tr>
+                                `;
+
+                                let dailyHtml = '';
+                                displayDates.forEach((date, index) => {
+                                    const dayData = dateMap[date] || { allocation: 0, mtm: 0 };
+                                    const dailyMtmPc = dayData.allocation !== 0 ? ((dayData.mtm / dayData.allocation) * 100).toFixed(2) + '%' : '0.00%';
+                                    dailyHtml += `
+                                        <td>${formatIndianNumber(dayData.allocation)}</td>
+                                        <td class="${getClassForMTM(dailyMtmPc)}">${formatIndianNumber(dayData.mtm)}</td>
+                                        <td class="${getClassForMTM(dailyMtmPc)}">${dailyMtmPc}</td>
+                                    `;
+                                    dailyGrandTotals[index].alloc += dayData.allocation;
+                                    dailyGrandTotals[index].mtm += dayData.mtm;
+                                });
+                                scrollableHtml += `<tr>${dailyHtml}</tr>`;
+
+                                overallGrandAllocation += totalAllocation;
+                                overallGrandMTM += totalMTM;
+                            }
+                        });
+
+                        // Calculate overall grand totals
+                        const overallMtmPc = overallGrandAllocation !== 0 ? ((overallGrandMTM / overallGrandAllocation) * 100).toFixed(2) + '%' : '0.00%';
+                        const overallMtmClass = getClassForMTM(overallMtmPc);
+
+                        frozenHtml += `
+                            <tr class="overall-grand-total-row">
+                                <td>Overall Grand Total</td>
+                                <td>${formatIndianNumber(overallGrandAllocation)}</td>
+                                <td class="${overallMtmClass}">${overallMtmPc}</td>
+                                <td>${formatIndianNumber(overallGrandMTM)}</td>
+                            </tr>
+                        `;
+
+                        let overallDailyGrandTotalHtml = '';
+                        dailyGrandTotals.forEach(day => {
+                            const dailyMtmPc = day.alloc !== 0 ? ((day.mtm / day.alloc) * 100).toFixed(2) + '%' : '0.00%';
+                            const dailyMtmClass = getClassForMTM(dailyMtmPc);
+                            overallDailyGrandTotalHtml += `
+                                <td>${formatIndianNumber(day.alloc)}</td>
+                                <td class="${dailyMtmClass}">${formatIndianNumber(day.mtm)}</td>
+                                <td class="${dailyMtmClass}">${dailyMtmPc}</td>
+                            `;
+                        });
+
+                        scrollableHtml += `
+                            <tr class="overall-grand-total-row">
+                                ${overallDailyGrandTotalHtml}
+                            </tr>
+                        `;
+
+                        frozenTableBody.html(frozenHtml);
+                        scrollableTableBody.html(scrollableHtml);
+
+                        const frozenRows = frozenTableBody.find('tr:not(.overall-grand-total-row)');
+                        const scrollableRows = scrollableTableBody.find('tr:not(.overall-grand-total-row)');
+
+                        frozenRows.each((index, row) => {
+                            $(row).on('mouseenter', () => {
+                                if (scrollableRows[index]) {
+                                    $(scrollableRows[index]).css('backgroundColor', '#e0f2f7');
+                                }
+                            });
+                            $(row).on('mouseleave', () => {
+                                if (scrollableRows[index]) {
+                                    $(scrollableRows[index]).css('backgroundColor', '');
+                                }
+                            });
+                        });
+
+                        scrollableRows.each((index, row) => {
+                            $(row).on('mouseenter', () => {
+                                if (frozenRows[index]) {
+                                    $(frozenRows[index]).css('backgroundColor', '#e0f2f7');
+                                }
+                            });
+                            $(row).on('mouseleave', () => {
+                                if (frozenRows[index]) {
+                                    $(frozenRows[index]).css('backgroundColor', '');
+                                }
+                            });
+                        });
+                    }
+                    syncScroll();
+                }
+
+                const queryParams = [
+                    date_filter && `date=${encodeURIComponent(date_filter)}`,
+                    start_date && `start_date=${encodeURIComponent(start_date)}`,
+                    end_date && `end_date=${encodeURIComponent(end_date)}`,
+                    user_id && `user_id=${encodeURIComponent(user_id)}`,
+                    partner && `partner=${encodeURIComponent(partner)}`,
+                    algo && `algo=${encodeURIComponent(algo)}`,
+                    (activeTab === 'user-partner-details' && rows_per_page) && `rows_per_page=${encodeURIComponent(rows_per_page)}`
+                ].filter(Boolean).join('&');
+
+                $('#export-partners-wise').attr('href', "{{ url_for('jainam.export_partner_stats') }}" + (queryParams ? '?' + queryParams : ''));
+                $('#export-user-partner').attr('href', "{{ url_for('jainam.export_user_partner_details') }}" + (queryParams ? '?' + queryParams : ''));
+                $('#jainam-data-link').attr('href', "{{ url_for('jainam.index') }}" + (queryParams ? '?' + queryParams : ''));
+            },
+            error: function(xhr) {
+                alert('Error loading dashboard: ' + (xhr.responseJSON?.error || 'Unknown error'));
+            }
+        });
+    }
+
+    function changePage(page) {
+        updateDashboard(page);
+    }
+
+    function updateRowsPerPage(value) {
+        document.getElementById('rows_per_page').value = value;
+        updateDashboard(1);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize Flatpickr with latest date as default
+        const latestDate = "{{ unique_dates | max if unique_dates else '' }}";
+        flatpickr("#date_range", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            defaultDate: latestDate || null,
+            onChange: function(selectedDates) {
+                updateDashboard(1);
+            }
+        });
+
+        // Ensure default selections for filters
+        document.getElementById('user_id').value = '';
+        document.getElementById('partner').value = '';
+        document.getElementById('algo').value = '';
+
+        const debouncedUpdateDashboard = debounce(updateDashboard, 300);
+        document.getElementById('user_id').addEventListener('change', debouncedUpdateDashboard);
+        document.getElementById('partner').addEventListener('change', debouncedUpdateDashboard);
+        document.getElementById('algo').addEventListener('change', debouncedUpdateDashboard);
+        document.getElementById('rows_per_page').addEventListener('change', function() {
+            updateRowsPerPage(this.value);
+        });
+
+        initializeTabs();
+        updateDashboard(1);
+    });
+</script>
+{% endblock %}

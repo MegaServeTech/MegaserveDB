@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Help - User Guide{% endblock %}
+{% block content %}
+<style>
+    .help-section {
+        margin-bottom: 2rem;
+    }
+    .help-section h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .help-section h4 {
+        font-size: 1.25rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .help-section p, .help-section li {
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+    .faq-item {
+        margin-bottom: 1rem;
+    }
+    .faq-item summary {
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 0.875rem;
+        padding: 0.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+    }
+    .faq-item p {
+        padding: 0.5rem 1rem;
+    }
+    .card-body {
+        padding: 1.25rem;
+    }
+    @media (max-width: 576px) {
+        .container {
+            padding: 0.5rem;
+        }
+        .help-section h3 {
+            font-size: 1.25rem;
+        }
+        .help-section h4 {
+            font-size: 1rem;
+        }
+        .help-section p, .help-section li, .faq-item summary, .faq-item p {
+            font-size: 0.75rem;
+        }
+        .card-body {
+            padding: 1rem;
+        }
+    }
+</style>
+<div class="container">
+    <h2 class="text-center mb-4">Help - User Guide</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages mb-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    <div class="card help-section">
+        <div class="card-body">
+            <h3>Introduction</h3>
+            <p>Welcome to the Orderbook Management System, a web application for managing and analyzing orderbook data. This guide provides instructions tailored to your role{% if current_user.is_admin %} as an admin{% else %} as a user{% endif %}.</p>
+        </div>
+    </div>
+    <div class="card help-section">
+        <div class="card-body">
+            <h3>Getting Started</h3>
+            <h4>Logging In</h4>
+            <ul>
+                <li>Navigate to the login page.</li>
+                <li>Enter your email and password.</li>
+                <li>Click "Login" to access your dashboard.</li>
+                <li>If you’ve forgotten your password, contact your admin to reset it.</li>
+            </ul>
+            <h4>Accessing the Dashboard</h4>
+            <p>After logging in, you’ll see the {% if current_user.is_admin %}Admin Dashboard with options to create and manage tables{% else %}User Home page with options to upload files and view tables{% endif %}.</p>
+        </div>
+    </div>
+    {% if current_user.is_admin %}
+    <div class="card help-section">
+        <div class="card-body">
+            <h3>Admin Features</h3>
+            <h4>Creating Tables</h4>
+            <ul>
+                <li>Go to the “Admin Dashboard” page.</li>
+                <li>Enter a unique table name (alphanumeric, no special characters).</li>
+                <li>Click “Create Table” to add it to the system.</li>
+            </ul>
+            <h4>Uploading Files</h4>
+            <ul>
+                <li>Go to the “Admin Dashboard” page.</li>
+                <li>Select a table from the dropdown menu.</li>
+                <li>Click “Select files” or drag and drop CSV, XLSX, or XLS files into the upload area.</li>
+                <li>Click “Upload” to submit. Supported file sizes are up to 10MB.</li>
+                <li>Check for a success or error message after submission.</li>
+            </ul>
+            <h4>Updating Table Data</h4>
+            <ul>
+                <li>Navigate to “Gridlog,” “Orderbook,” “Summary,” or “Other” sections.</li>
+                <li>Click “Update” next to a table to rename columns, delete rows/columns, or modify data.</li>
+                <li>Follow the prompts to save changes.</li>
+            </ul>
+            <h4>Calculating MTM and Realized Profits</h4>
+            <ul>
+                <li>Go to the “Aggregate” page.</li>
+                <li>Click “Calculate Total MTM” and select a date to compute MTM across users.</li>
+                <li>To exclude users, use the “Select Users to Include” dropdown and submit.</li>
+                <li>For realized profits, upload an Excel file and select a user ID in the “Realised Profit” section.</li>
+                <li>Export results as CSV if needed.</li>
+            </ul>
+            <h4>Hedge Analysis</h4>
+            <ul>
+                <li>Go to the “Analysis” page.</li>
+                <li>Upload a CSV file containing orderbook data.</li>
+                <li>Click “Analyze” to view hedge ratios and status counts.</li>
+                <li>Download the analyzed data as a CSV file.</li>
+            </ul>
+        </div>
+    </div>
+    <div class="card help-section">
+        <div class="card-body">
+            <h3>Frequently Asked Questions (FAQs)</h3>
+            <details class="faq-item">
+                <summary>What file formats are supported for uploads?</summary>
+                <p>Supported formats are CSV, XLSX, and XLS. For hedge analysis, only CSV files are accepted.</p>
+            </details>
+            <details class="faq-item">
+                <summary>How do I reset excluded users in MTM calculations?</summary>
+                <p>On the “Aggregate” page, click “Reset Exclusions” next to the list of excluded users.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Why is my table creation failing?</summary>
+                <p>Ensure the table name is unique and contains only alphanumeric characters. Check for error messages or contact support.</p>
+            </details>
+            <details class="faq-item">
+                <summary>What should I do if my upload fails?</summary>
+                <p>Check the file size (max 10MB), format, and ensure the file is not corrupted. Try again or contact support.</p>
+            </details>
+        </div>
+    </div>
+    {% else %}
+    <div class="card help-section">
+        <div class="card-body">
+            <h3>User Features</h3>
+            <h4>Uploading Files</h4>
+            <ul>
+                <li>Go to the “Home” page.</li>
+                <li>Select a table from the dropdown menu.</li>
+                <li>Click “Select files” or drag and drop CSV, XLSX, or XLS files into the upload area.</li>
+                <li>Click “Upload” to submit. Supported file sizes are up to 10MB.</li>
+                <li>Check for a success or error message after submission.</li>
+            </ul>
+            <h4>Viewing and Searching Tables</h4>
+            <ul>
+                <li>Navigate to “Gridlog,” “Orderbook,” “Summary,” or “Other” sections.</li>
+                <li>Click “View” next to a table to see its data.</li>
+                <li>Use the search bar (if enabled) to filter rows by keywords.</li>
+                <li>Apply date filters or toggle columns as needed.</li>
+            </ul>
+            <h4>Calculating MTM and Realized Profits</h4>
+            <ul>
+                <li>Go to the “Aggregate” page.</li>
+                <li>Click “Calculate Total MTM” and select a date to compute MTM across users.</li>
+                <li>For realized profits, upload an Excel file and select a user ID in the “Realised Profit” section.</li>
+                <li>Export results as CSV if needed.</li>
+            </ul>
+            <h4>Hedge Analysis</h4>
+            <ul>
+                <li>Go to the “Analysis” page.</li>
+                <li>Upload a CSV file containing orderbook data.</li>
+                <li>Click “Analyze” to view hedge ratios and status counts.</li>
+                <li>Download the analyzed data as a CSV file.</li>
+            </ul>
+        </div>
+    </div>
+    <div class="card help-section">
+        <div class="card-body">
+            <h3>Frequently Asked Questions (FAQs)</h3>
+            <details class="faq-item">
+                <summary>What file formats are supported for uploads?</summary>
+                <p>Supported formats are CSV, XLSX, and XLS. For hedge analysis, only CSV files are accepted.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Why can’t I see the “Search” or “Download” buttons?</summary>
+                <p>These features may be disabled or under development. Contact your admin for access.</p>
+            </details>
+            <details class="faq-item">
+                <summary>What should I do if my upload fails?</summary>
+                <p>Check the file size (max 10MB), format, and ensure the file is not corrupted. Try again or contact support.</p>
+            </details>
+            <details class="faq-item">
+                <summary>How do I view my analysis results?</summary>
+                <p>After uploading a file on the “Analysis” page and clicking “Analyze,” results will display below. If no data appears, ensure your file is valid and try again.</p>
+            </details>
+        </div>
+    </div>
+    {% endif %}
+    <div class="card help-section">
+        <div class="card-body">
+            <h3>Contact Support</h3>
+            <p>If you encounter issues or have questions, please email our support team at <a href="mailto:support@orderbookapp.com">support@orderbookapp.com</a>.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

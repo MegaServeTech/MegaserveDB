@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}User Details{% endblock %}
+
+{% block content %}
+<style>
+    .table-responsive {
+        max-height: 600px;
+        overflow-x: auto;
+        overflow-y: auto;
+    }
+    .sticky-header th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #343a40;
+    }
+    .invalid-row {
+        background-color: #ffcccc;
+    }
+</style>
+
+<nav class="navbar bg-light">
+    <div class="container-fluid">
+        <a class="btn btn-primary" href="{{ url_for('jainam.index') }}">Jainam Data</a>
+        <a class="btn btn-primary" href="{{ url_for('jainam.dashboard') }}">View Dashboard</a>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <h1 class="mb-4">User Details</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="main-table">
+                    <thead class="table-dark sticky-header">
+                        <tr>
+                            <th>Date</th>
+                            <th>User ID</th>
+                            <th>Alias</th>
+                            <th>Allocation (cr)</th>
+                            <th>MTM</th>
+                            <th>Max Loss</th>
+                            <th>Algo</th>
+                            <th>Broker</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-warning" data-is-main="true">
+                            <td>{{ user.date }}</td>
+                            <td>{{ user.user_id }}</td>
+                            <td>{{ user.alias }}</td>
+                            <td>{{ (user.allocation|default(0)|float / 10000000)|round(2) }} cr</td>
+                            <td>{{ user.MTM|default(0)|float|round(2) }}</td>
+                            <td>{{ user.max_loss|default(0)|float|round(2) }}</td>
+                            <td>{{ user.algo }}</td>
+                            <td>{{ user.broker }}</td>
+                            <td></td>
+                        </tr>
+                        {% for partner in partners if partner.allocation > 0 %}
+                        <tr class="table-danger" data-is-main="false">
+                            <td>{{ partner.date }}</td>
+                            <td>{{ partner.user_id }}</td>
+                            <td>{{ partner.alias }}</td>
+                            <td>{{ (partner.allocation|default(0)|float / 10000000)|round(2) }} cr</td>
+                            <td>{{ partner.MTM|default(0)|float|round(2) }}</td>
+                            <td>{{ partner.max_loss|default(0)|float|round(2) }}</td>
+                            <td>{{ partner.algo }}</td>
+                            <td>{{ partner.broker }}</td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-partner-main">Remove</button></td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold">
+                            <td colspan="3">Total (Partners Only)</td>
+                            <td id="total-allocation">0.00 cr</td>
+                            <td id="total-mtm">0.00</td>
+                            <td id="total-max-loss">0.00</td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="card-title mb-3">Edit Partner Allocation</h2>
+            <div class="mb-3">
+                <button type="button" class="btn btn-success" id="add-partner">Add Partner</button>
+            </div>
+            <form id="allocation-form" data-url="{{ url_for('jainam.save_distribution', row_id=user.row_id) }}">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="allocation-table">
+                        <thead class="table-dark sticky-header">
+                            <tr>
+                                <th>Alias</th>
+                                <th>Allocation (cr)</th>
+                                <th>Calculated MTM</th>
+                                <th>Max Loss</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in additional_rows %}
+                            <tr>
+                                <td><input type="text" class="form-control alias-input" value="{{ row.alias }}" readonly></td>
+                                <td><input type="number" class="form-control allocation-input" step="0.01" min="0" value="{{ (row.allocation|default(0)|float / 10000000)|round(2) }}"></td>
+                                <td class="calculated-mtm">{{ row.calculated_mtm|default(0)|float|round(2) }}</td>
+                                <td class="calculated-max-loss">{{ row.max_loss|default(0)|float|round(2) }}</td>
+                                <td><button type="button" class="btn btn-danger btn-sm remove-partner">Remove</button></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <a href="{{ url_for('jainam.index', start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', ''), date=request.args.get('date', ''), search=request.args.get('search', ''), user_id=request.args.get('user_id', ''), page=request.args.get('page', 1), rows_per_page=request.args.get('rows_per_page', 50)) }}" class="btn btn-outline-primary">Back to Table</a>
+    </div>
+</div>
+
+<script>
+    const CRORE = 10000000;
+    const VALID_ALIASES = ['PS', 'VT', 'GB', 'RD', 'RM'];
+
+    function calculateRowValues() {
+        const mainAllocation = {{ user.allocation|default(1)|float }} / CRORE;
+        const mainMTM = {{ user.MTM|default(0)|float }};
+        const mainMaxLoss = {{ user.max_loss|default(0)|float }};
+        const mtmRatio = mainAllocation > 0 ? mainMTM / (mainAllocation * CRORE) : 0;
+        const maxLossRatio = mainAllocation > 0 ? mainMaxLoss / (mainAllocation * CRORE) : 0;
+
+        // Update allocation table
+        document.querySelectorAll('#allocation-table tbody tr').forEach(row => {
+            const aliasInput = row.querySelector('.alias-input');
+            const alias = aliasInput.value.trim().toUpperCase();
+            const allocationInput = row.querySelector('.allocation-input');
+            const allocationCr = parseFloat(allocationInput.value) || 0;
+            const allocation = allocationCr * CRORE;
+            const calculatedMTM = allocation * mtmRatio;
+            const calculatedMaxLoss = allocation * maxLossRatio;
+
+            row.querySelector('.calculated-mtm').innerText = calculatedMTM.toFixed(2);
+            row.querySelector('.calculated-max-loss').innerText = calculatedMaxLoss.toFixed(2);
+
+            // Highlight invalid rows
+            if (!VALID_ALIASES.includes(alias) || allocationCr < 0) {
+                row.classList.add('invalid-row');
+            } else {
+                row.classList.remove('invalid-row');
+            }
+
+            // Update or add row in main table
+            let mainRow = document.querySelector(`#main-table tbody tr[data-is-main="false"][data-alias="${alias}"]`);
+            if (allocationCr > 0 && VALID_ALIASES.includes(alias)) {
+                if (!mainRow) {
+                    // Add new row to main table
+                    const newRow = `
+                        <tr class="table-danger" data-is-main="false" data-alias="${alias}">
+                            <td>{{ user.date }}</td>
+                            <td>{{ user.user_id }}</td>
+                            <td>${alias}</td>
+                            <td>${allocationCr.toFixed(2)} cr</td>
+                            <td>${calculatedMTM.toFixed(2)}</td>
+                            <td>${calculatedMaxLoss.toFixed(2)}</td>
+                            <td>{{ user.algo }}</td>
+                            <td>{{ user.broker }}</td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-partner-main">Remove</button></td>
+                        </tr>
+                    `;
+                    document.querySelector('#main-table tbody tr[data-is-main="true"]').insertAdjacentHTML('afterend', newRow);
+                    // Reattach remove button listener
+                    const newRemoveButton = document.querySelector(`#main-table tbody tr[data-is-main="false"][data-alias="${alias}"] .remove-partner-main`);
+                    if (newRemoveButton) {
+                        newRemoveButton.addEventListener('click', () => {
+                            const row = newRemoveButton.closest('tr');
+                            const alias = row.getAttribute('data-alias');
+                            row.remove();
+                            const allocRow = document.querySelector(`#allocation-table tbody tr .alias-input[value="${alias}"]`);
+                            if (allocRow) {
+                                allocRow.closest('tr').remove();
+                            }
+                            calculateTotals();
+                        });
+                    }
+                } else {
+                    // Update existing row
+                    mainRow.querySelector('td:nth-child(4)').innerText = allocationCr.toFixed(2) + ' cr';
+                    mainRow.querySelector('td:nth-child(5)').innerText = calculatedMTM.toFixed(2);
+                    mainRow.querySelector('td:nth-child(6)').innerText = calculatedMaxLoss.toFixed(2);
+                }
+            } else if (mainRow && allocationCr <= 0) {
+                mainRow.remove();
+            }
+        });
+
+        // Remove main table rows for aliases not in allocation table
+        document.querySelectorAll('#main-table tbody tr[data-is-main="false"]').forEach(row => {
+            const alias = row.getAttribute('data-alias');
+            const allocRow = document.querySelector(`#allocation-table tbody tr .alias-input[value="${alias}"]`);
+            if (!allocRow) {
+                row.remove();
+            }
+        });
+
+        calculateTotals();
+    }
+
+    function calculateTotals() {
+        let totalAllocationCr = 0;
+        let totalMTM = 0;
+        let totalMaxLoss = 0;
+
+        document.querySelectorAll('#main-table tbody tr[data-is-main="false"]').forEach(row => {
+            const allocationCr = parseFloat(row.querySelector('td:nth-child(4)').textContent) || 0;
+            const mtm = parseFloat(row.querySelector('td:nth-child(5)').textContent) || 0;
+            const maxLoss = parseFloat(row.querySelector('td:nth-child(6)').textContent) || 0;
+            if (allocationCr > 0) {
+                totalAllocationCr += allocationCr;
+                totalMTM += mtm;
+                totalMaxLoss += maxLoss;
+            }
+        });
+
+        document.getElementById('total-allocation').innerText = totalAllocationCr.toFixed(2) + ' cr';
+        document.getElementById('total-mtm').innerText = totalMTM.toFixed(2);
+        document.getElementById('total-max-loss').innerText = totalMaxLoss.toFixed(2);
+    }
+
+    function addPartnerRow(alias = '', allocation = 0) {
+        const tbody = document.querySelector('#allocation-table tbody');
+        const rowCount = tbody.querySelectorAll('tr').length;
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td><input type="text" class="form-control alias-input" value="${alias}"></td>
+            <td><input type="number" class="form-control allocation-input" step="0.01" min="0" value="${(allocation / CRORE).toFixed(2)}"></td>
+            <td class="calculated-mtm">0</td>
+            <td class="calculated-max-loss">0</td>
+            <td><button type="button" class="btn btn-danger btn-sm remove-partner">Remove</button></td>
+        `;
+        tbody.appendChild(newRow);
+
+        newRow.querySelector('.allocation-input').addEventListener('input', () => {
+            calculateRowValues();
+        });
+        newRow.querySelector('.alias-input').addEventListener('input', () => {
+            calculateRowValues();
+        });
+        newRow.querySelector('.remove-partner').addEventListener('click', () => {
+            const alias = newRow.querySelector('.alias-input').value.trim().toUpperCase();
+            newRow.remove();
+            const mainRow = document.querySelector(`#main-table tbody tr[data-is-main="false"][data-alias="${alias}"]`);
+            if (mainRow) {
+                mainRow.remove();
+            }
+            calculateTotals();
+        });
+
+        calculateRowValues();
+    }
+
+    document.getElementById('add-partner').addEventListener('click', () => {
+        addPartnerRow();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-partner')) {
+            const row = e.target.closest('tr');
+            const alias = row.querySelector('.alias-input').value.trim().toUpperCase();
+            row.remove();
+            const mainRow = document.querySelector(`#main-table tbody tr[data-is-main="false"][data-alias="${alias}"]`);
+            if (mainRow) {
+                mainRow.remove();
+            }
+            calculateTotals();
+        } else if (e.target.classList.contains('remove-partner-main')) {
+            const row = e.target.closest('tr');
+            const alias = row.getAttribute('data-alias');
+            row.remove();
+            const allocRow = document.querySelector(`#allocation-table tbody tr .alias-input[value="${alias}"]`);
+            if (allocRow) {
+                allocRow.closest('tr').remove();
+            }
+            calculateTotals();
+        }
+    });
+
+    document.querySelectorAll('.allocation-input').forEach(input => {
+        input.addEventListener('input', () => {
+            calculateRowValues();
+        });
+    });
+
+    document.querySelectorAll('.alias-input:not([readonly])').forEach(input => {
+        input.addEventListener('input', () => {
+            calculateRowValues();
+        });
+    });
+
+    window.addEventListener('load', () => {
+        calculateRowValues();
+    });
+
+    $('#allocation-form').on('submit', function(e) {
+        e.preventDefault();
+        const data = [];
+
+        $('#allocation-table tbody tr').each(function() {
+            const aliasInput = $(this).find('.alias-input');
+            const alias = aliasInput.val().trim().toUpperCase();
+            const allocationCr = parseFloat($(this).find('.allocation-input').val()) || 0;
+            const allocation = allocationCr * CRORE;
+
+            if (VALID_ALIASES.includes(alias)) {
+                data.push({
+                    alias: alias,
+                    allocation: allocation
+                });
+            }
+        });
+
+        $.ajax({
+            url: $(this).data('url'),
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ partners: data }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Partner allocations saved successfully');
+
+                    // Clear existing partner rows in main table
+                    $('#main-table tbody tr[data-is-main="false"]').remove();
+
+                    // Add updated partner rows to main table
+                    response.partners.forEach(row => {
+                        if (row.allocation > 0) {
+                            const newRow = `
+                                <tr class="table-danger" data-is-main="false" data-alias="${row.alias}">
+                                    <td>${row.date}</td>
+                                    <td>${row.user_id}</td>
+                                    <td>${row.alias}</td>
+                                    <td>${(row.allocation / CRORE).toFixed(2)} cr</td>
+                                    <td>${(row.MTM || 0).toFixed(2)}</td>
+                                    <td>${(row.max_loss || 0).toFixed(2)}</td>
+                                    <td>${row.algo || ''}</td>
+                                    <td>${row.broker || ''}</td>
+                                    <td><button type="button" class="btn btn-danger btn-sm remove-partner-main">Remove</button></td>
+                                </tr>
+                            `;
+                            $('#main-table tbody tr[data-is-main="true"]').after(newRow);
+                        }
+                    });
+
+                    // Clear and repopulate allocation table
+                    $('#allocation-table tbody').empty();
+                    response.additional_rows.forEach(row => {
+                        addPartnerRow(row.alias, row.allocation);
+                        const newRow = document.querySelector(`#allocation-table tbody tr:last-child .alias-input`);
+                        if (newRow) {
+                            newRow.setAttribute('readonly', 'readonly');
+                        }
+                    });
+
+                    // Reattach remove button listeners
+                    $('#main-table .remove-partner-main').off('click').on('click', function() {
+                        const row = $(this).closest('tr');
+                        const alias = row.attr('data-alias');
+                        row.remove();
+                        const allocRow = $(`#allocation-table tbody tr .alias-input[value="${alias}"]`);
+                        if (allocRow.length) {
+                            allocRow.closest('tr').remove();
+                        }
+                        calculateTotals();
+                    });
+
+                    calculateRowValues();
+                } else {
+                    alert('Error saving distribution: ' + response.error);
+                }
+            },
+            error: function(error) {
+                alert('Error submitting form: ' + error.statusText);
+            }
+        });
+    });
+</script>
+{% endblock %}
