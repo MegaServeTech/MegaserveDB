@@ -1,12 +1,14 @@
-# Use Python 3.11 slim for a lightweight base image
+# Use Python 3.11 slim image for smaller size
 FROM python:3.11-slim
 
+# Avoid .pyc files and enable real-time logs
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies required for MySQL + cryptography
+# Install system dependencies for MySQL + cryptography
 RUN apt-get update && apt-get install -y \
     build-essential \
     default-libmysqlclient-dev \
@@ -17,14 +19,15 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first and install dependencies
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
+# Expose app port
 EXPOSE 8000
 
-# Use flask for development (you can change this to gunicorn or waitress later for prod)
-CMD ["flask", "run", "--host=0.0.0.0", "--port=8000", "--reload"]
+# Use Waitress for production server
+CMD ["python", "-m", "waitress", "--port=8000", "run_app:app"]

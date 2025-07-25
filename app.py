@@ -1112,6 +1112,7 @@ def view_table(table):
         with engine.connect() as connection:
             # Get table columns
             columns = get_table_columns_cached(table)
+            logger.debug(f"Columns for table {table}: {columns}")
             if not columns:
                 flash(f"No columns found for table {table}", "error")
                 logger.warning(f"No columns found for table: {table}")
@@ -1125,9 +1126,8 @@ def view_table(table):
             # Categorical columns for dropdowns
             categorical_columns = ['algo', 'server', 'enabled', 'status', 'dte', 'order_type', 'product', 'validity', 'strategy_tag', 'logged_in', 'sqoff_done', 'broker', 'operator', 'log_type', 'transaction', 'exchange']
 
-            # Handle both GET and POST (for filtering via AJAX or form submission)
+            # Handle request parameters
             if request.method == 'POST':
-                # AJAX request parameters
                 draw = int(request.form.get('draw', 1))
                 start = int(request.form.get('start', 0))
                 length = int(request.form.get('length', 500))
@@ -1141,7 +1141,6 @@ def view_table(table):
                 column_searches = {k: v.strip() for k, v in request.form.items() if k.startswith('column_') and v.strip()}
                 dropdown_filters = {k: v.strip() for k, v in request.form.items() if k.startswith('dropdown_') and v.strip()}
             else:
-                # GET request parameters
                 search_query = request.args.get('search_query', '').strip()
                 from_date = request.args.get('from_date', '').strip()
                 to_date = request.args.get('to_date', '').strip()
@@ -1161,7 +1160,7 @@ def view_table(table):
             if sort_direction not in ['asc', 'desc']:
                 sort_direction = 'asc'
             page = max(1, page)
-            per_page = max(1, min(per_page, 3000))  # Cap at 3000
+            per_page = max(1, min(per_page, 3000))
             offset = start
 
             # Build SQL query
@@ -1171,7 +1170,7 @@ def view_table(table):
 
             # Global search
             if search_query:
-                search_conditions = [f"`{col}` LIKE :search_{col}" for col in columns]
+                search_conditions = [f"CAST(`{col}` AS CHAR) LIKE :search_{col}" for col in columns]
                 conditions.append("(" + " OR ".join(search_conditions) + ")")
                 for col in columns:
                     params[f'search_{col}'] = f"%{search_query}%"
@@ -1186,7 +1185,6 @@ def view_table(table):
                         params[key] = f"%{value}%"
                 except ValueError:
                     logger.warning(f"Invalid column search key: {key}")
-                    continue
 
             # Dropdown filters
             for key, value in dropdown_filters.items():
@@ -1202,30 +1200,30 @@ def view_table(table):
                                 params[f'{key}_{i}'] = val
                 except ValueError:
                     logger.warning(f"Invalid dropdown filter key: {key}")
-                    continue
 
             # Date range filter
-            if 'date' in columns and from_date and to_date:
+            if any(col.lower() == 'date' for col in columns) and from_date and to_date:
+                date_column = next(col for col in columns if col.lower() == 'date')
                 try:
                     from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
                     to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
                     if from_date_obj <= to_date_obj:
-                        conditions.append("`date` BETWEEN :from_date AND :to_date")
+                        conditions.append(f"`{date_column}` BETWEEN :from_date AND :to_date")
                         params['from_date'] = from_date_obj
                         params['to_date'] = to_date_obj
                     else:
                         flash("Invalid date range: 'From' date must be before 'To' date", "warning")
-                        from_date = to_date = ''
                 except ValueError:
                     flash("Invalid date format", "warning")
                     logger.warning(f"Invalid date format: from_date={from_date}, to_date={to_date}")
-                    from_date = to_date = ''
 
             # Construct WHERE clause
             where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
-
-            # Sorting
             order_by_clause = f" ORDER BY `{sort_column}` {sort_direction.upper()}"
+
+            # Log query for debugging
+            logger.debug(f"Query: {query} {where_clause}{order_by_clause}")
+            logger.debug(f"Parameters: {params}")
 
             # Count queries
             total_rows_query = f"SELECT COUNT(*) FROM `{table}`"
@@ -1259,13 +1257,11 @@ def view_table(table):
                         unique_query = f"SELECT DISTINCT `{col}` FROM `{table}` {where_clause} ORDER BY `{col}`"
                         unique_result = connection.execute(text(unique_query), params)
                         unique_values[str(i)] = [str(row[0]) for row in unique_result.fetchall() if row[0] is not None]
-                        logger.debug(f"Unique values for column {col} (index {i}): {unique_values[str(i)]}")
                     except Exception as e:
                         logger.error(f"Error fetching unique values for column {col}: {str(e)}")
                         unique_values[str(i)] = []
 
-            # Log response data for debugging
-            logger.debug(f"Returning unique_values: {unique_values}")
+            # Log response data
             logger.debug(f"Paginated data rows: {len(paginated_data)}")
 
             # Prepare response
@@ -1273,7 +1269,7 @@ def view_table(table):
             additional_columns = columns[1:] if len(columns) > 1 else []
             additional_columns_json = json.dumps(additional_columns)
 
-            # Handle AJAX request (POST or GET with ajax=true)
+            # Handle AJAX request
             is_ajax = request.method == 'POST' or request.args.get('ajax') == 'true'
             if is_ajax:
                 response_data = []
@@ -1300,7 +1296,7 @@ def view_table(table):
 
             # Flash messages for empty results
             if not paginated_data and (search_query or from_date or to_date or column_searches or dropdown_filters):
-                flash("No data found with the specified filters", "warning")
+                flash(f"No data found with the specified filters: search='{search_query}'", "warning")
             elif not paginated_data:
                 flash("No data found", "warning")
 
@@ -1328,6 +1324,116 @@ def view_table(table):
         logger.error(f"Error fetching data for table {table}: {str(e)}", exc_info=True)
         flash(f"Error fetching data for table {table}: {str(e)}", "error")
         return redirect(url_for('admin.admin_home') if session['role'] == 'admin' else url_for('user.user_home'))
+        
+
+@app.route('/download_table/<table>')
+def download_table(table):
+    if 'role' not in session or not session['authenticated']:
+        flash("Please log in to download tables", "error")
+        return redirect(url_for('login.login'))
+    if session['role'] not in ['admin', 'user']:
+        flash("You do not have permission to download tables", "error")
+        return redirect(url_for('view_table', table=table, page=1))
+    
+    engine = get_db_connection()
+    if not engine:
+        flash("Database connection failed", "error")
+        return redirect(url_for('view_table', table=table, page=1))
+    
+    try:
+        with engine.connect() as connection:
+            columns = get_table_columns(table)
+            if not columns:
+                flash(f"No columns found for table {table}", "error")
+                return redirect(url_for('view_table', table=table, page=1))
+
+            search_query = request.args.get('search_query', '').strip()
+            from_date = request.args.get('from_date', '').strip()
+            to_date = request.args.get('to_date', '').strip()
+            download_all = request.args.get('download_all', 'false').lower() == 'true'
+            page = int(request.args.get('page', '1')) if request.args.get('page', '1').strip().isdigit() else 1
+            rows_per_page = int(request.args.get('rows_per_page', '500')) if request.args.get('rows_per_page', '500').strip().isdigit() else 500
+
+            column_searches = {k: v.strip() for k, v in request.args.items() if k.startswith('column_') and v.strip()}
+
+            page = max(1, page)
+            rows_per_page = max(1, rows_per_page)
+            offset = (page - 1) * rows_per_page
+
+            query = f"SELECT * FROM `{table}`"
+            conditions = []
+            params = {}
+
+            if search_query:
+                search_conditions = [f"`{col}` LIKE :search" for col in columns]
+                conditions.append("(" + " OR ".join(search_conditions) + ")")
+                params['search'] = f"%{search_query}%"
+
+            for key, value in column_searches.items():
+                try:
+                    col_index = int(key.replace('column_', ''))
+                    if 0 <= col_index < len(columns):
+                        col_name = columns[col_index]
+                        conditions.append(f"`{col_name}` LIKE :{key}")
+                        params[key] = f"%{value}%"
+                except ValueError:
+                    continue
+
+            if 'date' in columns and from_date and to_date:
+                try:
+                    from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
+                    to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
+                    if from_date_obj <= to_date_obj:
+                        conditions.append("`date` BETWEEN :from_date AND :to_date")
+                        params['from_date'] = from_date_obj
+                        params['to_date'] = to_date_obj
+                except ValueError:
+                    pass
+
+            where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+
+            if download_all:
+                query_final = f"{query} {where_clause}"
+            else:
+                query_final = f"{query} {where_clause} LIMIT :limit OFFSET :offset"
+                params['limit'] = rows_per_page
+                params['offset'] = offset
+
+            df = pd.read_sql(text(query_final), connection, params=params)
+
+            csv_output = io.BytesIO()
+            df.to_csv(csv_output, index=False)
+            csv_output.seek(0)
+            
+            csv_size = csv_output.getbuffer().nbytes
+            size_limit = 50 * 1024 * 1024
+            
+            if csv_size > size_limit:
+                zip_output = io.BytesIO()
+                with zipfile.ZipFile(zip_output, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    filename = f"{table}_filtered_all.csv" if download_all else f"{table}_filtered_page_{page}.csv"
+                    zip_file.writestr(filename, csv_output.getvalue())
+                zip_output.seek(0)
+                download_name = f"{table}_filtered_all.zip" if download_all else f"{table}_filtered_page_{page}.zip"
+                return send_file(
+                    zip_output,
+                    mimetype='application/zip',
+                    as_attachment=True,
+                    download_name=download_name
+                )
+            else:
+                download_name = f"{table}_filtered_all.csv" if download_all else f"{table}_filtered_page_{page}.csv"
+                return send_file(
+                    csv_output,
+                    mimetype='text/csv',
+                    as_attachment=True,
+                    download_name=download_name
+                )
+            
+    except Exception as e:
+        flash(f"Error downloading table {table}: {type(e).__name__} - {str(e)}", "error")
+        return redirect(url_for('view_table', table=table, page=1))
+    
 
 @app.route('/manage_database', defaults={'table': None}, methods=['GET', 'POST'])
 @app.route('/manage_database/<table>', methods=['GET', 'POST'])
@@ -1701,113 +1807,6 @@ def manage_database(table):
         flash(f"Unexpected error: {str(e)}", "error")
         return redirect(url_for('view_table', table=table or '', page=1))
 
-@app.route('/download_table/<table>')
-def download_table(table):
-    if 'role' not in session or not session['authenticated']:
-        flash("Please log in to download tables", "error")
-        return redirect(url_for('login.login'))
-    if session['role'] not in ['admin', 'user']:
-        flash("You do not have permission to download tables", "error")
-        return redirect(url_for('view_table', table=table, page=1))
-    
-    engine = get_db_connection()
-    if not engine:
-        flash("Database connection failed", "error")
-        return redirect(url_for('view_table', table=table, page=1))
-    
-    try:
-        with engine.connect() as connection:
-            columns = get_table_columns(table)
-            if not columns:
-                flash(f"No columns found for table {table}", "error")
-                return redirect(url_for('view_table', table=table, page=1))
-
-            search_query = request.args.get('search_query', '').strip()
-            from_date = request.args.get('from_date', '').strip()
-            to_date = request.args.get('to_date', '').strip()
-            download_all = request.args.get('download_all', 'false').lower() == 'true'
-            page = int(request.args.get('page', '1')) if request.args.get('page', '1').strip().isdigit() else 1
-            rows_per_page = int(request.args.get('rows_per_page', '500')) if request.args.get('rows_per_page', '500').strip().isdigit() else 500
-
-            column_searches = {k: v.strip() for k, v in request.args.items() if k.startswith('column_') and v.strip()}
-
-            page = max(1, page)
-            rows_per_page = max(1, rows_per_page)
-            offset = (page - 1) * rows_per_page
-
-            query = f"SELECT * FROM `{table}`"
-            conditions = []
-            params = {}
-
-            if search_query:
-                search_conditions = [f"`{col}` LIKE :search" for col in columns]
-                conditions.append("(" + " OR ".join(search_conditions) + ")")
-                params['search'] = f"%{search_query}%"
-
-            for key, value in column_searches.items():
-                try:
-                    col_index = int(key.replace('column_', ''))
-                    if 0 <= col_index < len(columns):
-                        col_name = columns[col_index]
-                        conditions.append(f"`{col_name}` LIKE :{key}")
-                        params[key] = f"%{value}%"
-                except ValueError:
-                    continue
-
-            if 'date' in columns and from_date and to_date:
-                try:
-                    from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
-                    to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-                    if from_date_obj <= to_date_obj:
-                        conditions.append("`date` BETWEEN :from_date AND :to_date")
-                        params['from_date'] = from_date_obj
-                        params['to_date'] = to_date_obj
-                except ValueError:
-                    pass
-
-            where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
-
-            if download_all:
-                query_final = f"{query} {where_clause}"
-            else:
-                query_final = f"{query} {where_clause} LIMIT :limit OFFSET :offset"
-                params['limit'] = rows_per_page
-                params['offset'] = offset
-
-            df = pd.read_sql(text(query_final), connection, params=params)
-
-            csv_output = io.BytesIO()
-            df.to_csv(csv_output, index=False)
-            csv_output.seek(0)
-            
-            csv_size = csv_output.getbuffer().nbytes
-            size_limit = 50 * 1024 * 1024
-            
-            if csv_size > size_limit:
-                zip_output = io.BytesIO()
-                with zipfile.ZipFile(zip_output, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                    filename = f"{table}_filtered_all.csv" if download_all else f"{table}_filtered_page_{page}.csv"
-                    zip_file.writestr(filename, csv_output.getvalue())
-                zip_output.seek(0)
-                download_name = f"{table}_filtered_all.zip" if download_all else f"{table}_filtered_page_{page}.zip"
-                return send_file(
-                    zip_output,
-                    mimetype='application/zip',
-                    as_attachment=True,
-                    download_name=download_name
-                )
-            else:
-                download_name = f"{table}_filtered_all.csv" if download_all else f"{table}_filtered_page_{page}.csv"
-                return send_file(
-                    csv_output,
-                    mimetype='text/csv',
-                    as_attachment=True,
-                    download_name=download_name
-                )
-            
-    except Exception as e:
-        flash(f"Error downloading table {table}: {type(e).__name__} - {str(e)}", "error")
-        return redirect(url_for('view_table', table=table, page=1))
 
 @app.route('/help')
 def help():

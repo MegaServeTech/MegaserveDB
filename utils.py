@@ -21,9 +21,9 @@ def get_db_connection():
     try:
         # Replace with your actual database credentials
         db_user = os.getenv('DB_USER', 'root')
-        db_password = os.getenv('DB_PASSWORD', 'mst1108')
-        db_host = os.getenv('DB_HOST', '10.160.0.39')
-        db_name = os.getenv('DB_NAME', 'megaserve')
+        db_password = os.getenv('DB_PASSWORD', 'Welcome987')
+        db_host = os.getenv('DB_HOST', 'localhost')
+        db_name = os.getenv('DB_NAME', 'mst')
         
         connection_uri = f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}"
         engine = create_engine(connection_uri, echo=False, pool_pre_ping=True)
