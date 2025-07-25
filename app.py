@@ -515,6 +515,7 @@ def get_existing_columns(cursor, table_name):
     cursor.execute(f"SHOW COLUMNS FROM `{table_name}`")
     return [col[0] for col in cursor.fetchall()]
 
+
 def upload_files_to_table(file_source, table_name, result_list, event, uploaded_by, has_header=True, batch_size=1000):
     result_lock = threading.Lock()
     
@@ -592,17 +593,31 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                             headers = [str(col).strip() for col in first_line] if has_header else [f"column_{i}" for i in range(len(first_line))]
                             headers = standardize_headers(headers)  # Standardize headers
 
-                        # For non-predefined tables, check header consistency
-                        if not is_predefined:
+                        # For predefined 'ob' table, enforce specific header count
+                        if table_name_lower == 'ob':
+                            if len(headers) not in [19, 20]:
+                                logger.warning(f"Expected 19 or 20 headers in {file_name}, found {len(headers)}")
+                                logger.debug(f"Headers in {file_name}: {headers}")
+                                with result_lock:
+                                    result_list.append(("error", f"Expected 19 or 20 headers in {file_name}, found {len(headers)}"))
+                                continue
+                            if len(headers) == 20:
+                                logger.info(f"Found 20 headers in {file_name}, using first 19 and setting 20th as 'Tag'")
+                                headers = headers[:19]
+                                headers.append("Tag")
+                            else:
+                                headers.append("Tag")
+                        # For non-predefined tables, check header consistency (names and positions)
+                        elif not is_predefined:
                             if reference_headers is None:
                                 reference_headers = headers
-                            elif headers != reference_headers:
+                            elif headers != reference_headers:  # Check exact match including position
                                 logger.warning(f"Header mismatch in {file_name}. Expected: {reference_headers}, Found: {headers}")
                                 with result_lock:
                                     result_list.append(("error", f"Header mismatch in {file_name}. All files must have identical headers in the same order."))
                                 continue
 
-                        # Extract server and date
+                        # Extract server and date (only for predefined tables if needed)
                         server, date = extract_server_and_date(file_name, table_name_lower, headers)
                         if is_predefined and (not server or not date) and not ('server' in [h.lower() for h in headers] and 'date' in [h.lower() for h in headers]):
                             logger.warning(f"Skipping {file_name} due to invalid server or date in filename")
@@ -610,10 +625,41 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                 result_list.append(("error", f"Invalid server or date in filename {file_name}"))
                             continue
 
-                        df = pd.read_csv(file_path, header=0 if has_header else None, 
-                                       names=headers if not has_header else None,
+                        df = pd.read_csv(file_path, header=None if table_name_lower == 'ob' else (0 if has_header else None), 
+                                       skiprows=1 if table_name_lower == 'ob' else 0, 
+                                       names=headers if table_name_lower == 'ob' else None,
                                        dtype_backend='numpy_nullable', keep_default_na=False, dtype=str)
                         
+                        if table_name_lower == 'ob' and len(df.columns) != 20:
+                            logger.warning(f"Expected 20 columns in data rows of {file_name}, found {len(df.columns)}")
+                            with result_lock:
+                                result_list.append(("error", f"Expected 20 columns in data rows of {file_name}, found {len(df.columns)}"))
+                            continue
+
+                        if not has_header and table_name_lower != 'ob':
+                            df.columns = [f"column_{i}" for i in range(len(df.columns))]
+                        elif has_header and table_name_lower != 'ob':
+                            df.columns = headers
+
+                        if is_predefined:
+                            has_unmapped, unmapped_error = check_unmapped_columns(df.columns, column_mapping, file_name, table_name_lower)
+                            if has_unmapped:
+                                with result_lock:
+                                    result_list.append(("error", unmapped_error))
+                                continue
+                            conflict, conflicting_col, conflicting_with = check_column_alias_conflict(df.columns, column_mapping)
+                            if conflict:
+                                with result_lock:
+                                    result_list.append(("error", f"Column alias conflict in {file_name}: '{conflicting_col}' conflicts with '{conflicting_with}'"))
+                                continue
+                            normalized_columns = {normalize_column_name(col, column_mapping) for col in df.columns if not col.lower().startswith('unnamed:')}
+                            normalized_columns = {col for col in normalized_columns if col.lower() not in ['server', 'date', 'dte']}
+                            expected_columns = set(col for col in column_mapping.keys() if col.lower() not in ['server', 'date', 'dte'])
+                            if not expected_columns.issubset(normalized_columns):
+                                logger.warning(f"CSV {file_name} does not match expected '{table_name_lower}' table columns: {expected_columns}")
+                                with result_lock:
+                                    result_list.append(("warning", f"CSV {file_name} does not match expected '{table_name_lower}' table columns"))
+                                continue
                     else:  # Excel files
                         engine_param = 'pyxlsb' if file_name.lower().endswith('.xlsb') else None
                         xls = pd.ExcelFile(file_path, engine=engine_param)
@@ -635,12 +681,33 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                         matching_sheet = None
 
                         if is_predefined:
+                            # First try the mapped sheet name
                             if target_sheet and target_sheet in sheet_names:
                                 try:
                                     df = pd.read_excel(file_path, sheet_name=target_sheet, header=0, index_col=None, 
                                                     dtype_backend='numpy_nullable', keep_default_na=False, engine=engine_param)
                                     headers = standardize_headers([str(col) for col in df.columns])
                                     df.columns = headers
+                                    
+                                    if table_name_lower == 'ob':
+                                        if len(headers) not in [19, 20]:
+                                            logger.warning(f"Expected 19 or 20 headers in {file_name} (sheet: {target_sheet}), found {len(headers)}")
+                                            logger.debug(f"Headers in {file_name} (sheet: {target_sheet}): {headers}")
+                                            with result_lock:
+                                                result_list.append(("error", f"Expected 19 or 20 headers in {file_name} (sheet: {target_sheet}), found {len(headers)}"))
+                                            continue
+                                        if len(headers) == 20:
+                                            logger.info(f"Found 20 headers in {file_name} (sheet: {target_sheet}), using first 19 and setting 20th as 'Tag'")
+                                            headers = headers[:19]
+                                            headers.append("Tag")
+                                        else:
+                                            headers.append("Tag")
+                                        df.columns = headers
+                                        if len(df.columns) != 20:
+                                            logger.warning(f"Expected 20 columns in data rows of {file_name} (sheet: {target_sheet}), found {len(df.columns)}")
+                                            with result_lock:
+                                                result_list.append(("error", f"Expected 20 columns in data rows of {file_name} (sheet: {target_sheet}), found {len(df.columns)}"))
+                                            continue
                                     
                                     has_unmapped, unmapped_error = check_unmapped_columns(df.columns, column_mapping, 
                                                                                         f"{file_name} (sheet: {target_sheet})", table_name_lower)
@@ -656,7 +723,7 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                             result_list.append(("error", f"Column alias conflict in {file_name}: '{conflicting_col}' conflicts with '{conflicting_with}'"))
                                         continue
                                     normalized_columns = {normalize_column_name(col, column_mapping) for col in df.columns 
-                                                        if col and not col.lower().startswith('unnamed:')}
+                                                        if not col.lower().startswith('unnamed:')}
                                     normalized_columns = {col for col in normalized_columns if col.lower() not in ['server', 'date', 'dte']}
                                     expected_columns = set(col for col in column_mapping.keys() if col.lower() not in ['server', 'date', 'dte'])
                                     if expected_columns.issubset(normalized_columns):
@@ -665,6 +732,7 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                 except Exception as e:
                                     logger.warning(f"Error reading sheet {target_sheet} in {file_name}: {str(e)}")
                             
+                            # If mapped sheet not found or doesn't match, check all sheets for header match
                             if not matching_sheet:
                                 for sheet_name in sheet_names:
                                     try:
@@ -672,6 +740,22 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                                               dtype_backend='numpy_nullable', keep_default_na=False, engine=engine_param)
                                         headers = standardize_headers([str(col) for col in temp_df.columns])
                                         temp_df.columns = headers
+                                        
+                                        if table_name_lower == 'ob':
+                                            if len(headers) not in [19, 20]:
+                                                logger.warning(f"Expected 19 or 20 headers in {file_name} (sheet: {sheet_name}), found {len(headers)}")
+                                                logger.debug(f"Headers in {file_name} (sheet: {sheet_name}): {headers}")
+                                                continue
+                                            if len(headers) == 20:
+                                                logger.info(f"Found 20 headers in {file_name} (sheet: {sheet_name}), using first 19 and setting 20th as 'Tag'")
+                                                headers = headers[:19]
+                                                headers.append("Tag")
+                                            else:
+                                                headers.append("Tag")
+                                            temp_df.columns = headers
+                                            if len(temp_df.columns) != 20:
+                                                logger.warning(f"Expected 20 columns in data rows of {file_name} (sheet: {sheet_name}), found {len(temp_df.columns)}")
+                                                continue
                                         
                                         has_unmapped, unmapped_error = check_unmapped_columns(headers, column_mapping, 
                                                                                             f"{file_name} (sheet: {sheet_name})", table_name_lower)
@@ -683,7 +767,7 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                             logger.warning(f"Column alias conflict in sheet {sheet_name} of {file_name}: '{conflicting_col}' conflicts with '{conflicting_with}'")
                                             continue
                                         normalized_columns = {normalize_column_name(col, column_mapping) for col in headers 
-                                                            if col and not col.lower().startswith('unnamed:')}
+                                                            if not col.lower().startswith('unnamed:')}
                                         normalized_columns = {col for col in normalized_columns if col.lower() not in ['server', 'date', 'dte']}
                                         expected_columns = set(col for col in column_mapping.keys() if col.lower() not in ['server', 'date', 'dte'])
                                         if expected_columns.issubset(normalized_columns):
@@ -702,19 +786,20 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                         result_list.append(("warning", f"No sheet in {file_name} matches expected '{table_name_lower}' table columns"))
                                     continue
                         else:
+                            # For non-predefined tables, use the first sheet
                             df = pd.read_excel(file_path, sheet_name=sheet_names[0], header=0, index_col=None, 
                                              dtype_backend='numpy_nullable', keep_default_na=False, engine=engine_param)
                             headers = standardize_headers([str(col) for col in df.columns])
                             if reference_headers is None:
                                 reference_headers = headers
-                            elif headers != reference_headers:
+                            elif headers != reference_headers:  # Check exact match including position
                                 logger.warning(f"Header mismatch in {file_name}. Expected: {reference_headers}, Found: {headers}")
                                 with result_lock:
                                     result_list.append(("error", f"Header mismatch in {file_name}. All files must have identical headers in the same order."))
                                 continue
                             df.columns = headers
 
-                        # Extract server and date
+                        # Extract server and date (only for predefined tables if needed)
                         server, date = extract_server_and_date(file_name, table_name_lower, headers)
                         if is_predefined and (not server or not date) and not ('server' in [h.lower() for h in headers] and 'date' in [h.lower() for h in headers]):
                             logger.warning(f"Skipping {file_name} due to invalid server or date in filename")
@@ -722,37 +807,26 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                 result_list.append(("error", f"Invalid server or date in filename {file_name}"))
                             continue
 
-                    # Handle 'tag' column for 'ob' table
-                    if table_name_lower == 'ob' and 'tag' not in [h.lower() for h in df.columns]:
-                        unnamed_columns = [col for col in df.columns if col and col.lower().startswith('unnamed:')]
-                        if unnamed_columns:
-                            logger.info(f"Merging unnamed columns {unnamed_columns} into 'tag' for {file_name}")
-                            df['tag'] = df[unnamed_columns].astype(str).apply(
-                                lambda x: ' | '.join([val for val in x if pd.notnull(val) and val != 'nan' and val != '']), axis=1
-                            )
-                            df['tag'] = df['tag'].replace('', None)
-                            df = df.drop(columns=unnamed_columns)
-                        else:
-                            logger.info(f"No unnamed columns found in {file_name}, adding empty 'tag' column")
-                            df['tag'] = None
-
-                    # Process DataFrame and map columns
+                    # Process DataFrame and add columns to table
                     if is_predefined and column_mapping:
                         df = map_columns(df, column_mapping)
                     else:
-                        df.columns = headers
+                        df.columns = headers  # Use standardized headers
+
+                    if table_name_lower == 'ob' and 'tag' in df.columns:
+                        df['tag'] = df['tag'].fillna('').astype(str)
 
                     # Validate and map DTE for 'users' table
                     if table_name_lower == 'users' and 'dte' in df.columns:
                         valid_dtes = {'0DTE', '1DTE', '2DTE', '3DTE', '4DTE'}
                         dte_mapping = {
-                            '0': '0DTE', '0dte': '0DTE', 'dte0': '0DTE', 'DTE0': '0DTE',
-                            '1': '1DTE', '1dte': '1DTE', 'dte1': '1DTE', 'DTE1': '1DTE',
-                            '2': '2DTE', '2dte': '2DTE', 'dte2': '2DTE', 'DTE2': '2DTE',
-                            '3': '3DTE', '3dte': '3DTE', 'dte3': '3DTE', 'DTE3': '3DTE',
-                            '4': '4DTE', '4dte': '4DTE', 'dte4': '4DTE', 'DTE4': '4DTE',
-                            '0/1': '0/1DTE', '0DTE/1DTE': '0/1DTE'
-                        }
+                                '0': '0DTE', '0dte': '0DTE', 'dte0': '0DTE', 'DTE0': '0DTE',
+                                '1': '1DTE', '1dte': '1DTE', 'dte1': '1DTE', 'DTE1': '1DTE',
+                                '2': '2DTE', '2dte': '2DTE', 'dte2': '2DTE', 'DTE2': '2DTE',
+                                '3': '3DTE', '3dte': '3DTE', 'dte3': '3DTE', 'DTE3': '3DTE',
+                                '4': '4DTE', '4dte': '4DTE', 'dte4': '4DTE', 'DTE4': '4DTE',
+                                '0/1':'0/1DTE', '0DTE/1DTE': '0/1DTE'
+                            }
                         invalid_dtes = set(df['dte'].dropna()) - valid_dtes - set(dte_mapping.keys())
                         if invalid_dtes:
                             logger.warning(f"Invalid DTE values in {file_name}: {invalid_dtes}")
@@ -763,7 +837,7 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
 
                     logger.info(f"Processed DataFrame for {file_name}: {df.head().to_dict()}")
 
-                    # Add server and date to DataFrame only if not present
+                    # Add server and date to DataFrame only for predefined tables if not already present
                     if is_predefined:
                         if table_name_lower in table_mappings:
                             if 'server' not in [h.lower() for h in df.columns]:
@@ -792,9 +866,6 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
 
                     # Add columns to the table if they don't exist
                     for col in df.columns:
-                        if not col or col.strip() == '':
-                            logger.warning(f"Skipping invalid column name in {file_name}")
-                            continue
                         if col.lower() not in existing_columns:
                             try:
                                 if is_predefined:
@@ -820,6 +891,7 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
                                             logger.warning(f"No valid datatype defined for column `{col}` in `{table_name_lower}`, using TEXT")
                                             cursor.execute(f"ALTER TABLE `{table_name_lower}` ADD COLUMN `{col}` TEXT")
                                 else:
+                                    # For non-predefined tables, use TEXT for all new columns
                                     cursor.execute(f"ALTER TABLE `{table_name_lower}` ADD COLUMN `{col}` TEXT")
                                 existing_columns.append(col.lower())
                             except Exception as e:
@@ -918,6 +990,7 @@ def upload_files_to_table(file_source, table_name, result_list, event, uploaded_
             result_list.append(("error", f"Error starting upload thread: {type(e).__name__} - {str(e)}"))
         event.set()
         return None, event
+
 
 @app.after_request
 def add_no_cache_headers(response):

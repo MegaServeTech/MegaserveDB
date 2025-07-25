@@ -10,11 +10,11 @@ import math
 from utils import get_db_connection, logger
 from auth import Auth
 from sqlalchemy import text
-from dotenv import load_dotenv
-import os
+# from dotenv import load_dotenv
+# import os
 
-# Load variables from .env
-load_dotenv()
+# # Load variables from .env
+# load_dotenv()
 
 
 # Configure logging
