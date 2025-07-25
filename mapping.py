@@ -90,26 +90,7 @@ user_column_variations = {
     "sno": {"aliases": ["SNO.", "SNO"], "datatype": "INT"},
 }
 
-# partners=  {
-#         'id': {'datatype': 'INT'},
-#         'user_id': {'datatype': 'VARCHAR(50)'},
-#         'alias': {'datatype': 'VARCHAR(100)'},
-#         'partner_name': {'datatype': 'VARCHAR(100)'},
-#         'allocation': {'datatype': 'FLOAT'},
-#         'created_at': {'datatype': 'DATE'}
-#     }
-# jainam_exports =  {
-#         'id': {'datatype': 'INT'},
-#         'user_id': {'datatype': 'VARCHAR(50)'},
-#         'alias': {'datatype': 'VARCHAR(100)'},
-#         'partners': {'datatype': 'VARCHAR(100)'},
-#         'mtm_all': {'datatype': 'FLOAT'},
-#         'allocation': {'datatype': 'FLOAT'},
-#         'mtm_percentage': {'datatype': 'FLOAT'},
-#         'date': {'datatype': 'DATE'},
-#         'max_loss': {'datatype': 'FLOAT'},
-#         'export_date': {'datatype': 'DATE'}
-#     }
+
 
 order_book_column_variations = {
     
@@ -155,7 +136,6 @@ strategytag_column_mapping = {
 }
 
 legs_column_mapping = {
-    
     "user_id": {"aliases": ["user id", "userid", "user_id", "USERID", "UserID"], "datatype": "VARCHAR(255)"},
     "user_alias": {"aliases": ["user alias", "UserAlias", "user_alias", "USER_ALIAS"], "datatype": "VARCHAR(255)"},
     "leg_id": {"aliases": ["leg id", "LegID", "leg_id"], "datatype": "VARCHAR(255)"},
@@ -165,7 +145,7 @@ legs_column_mapping = {
     "ltp": {"aliases": ["ltp", "LTP", "LastTradedPrice"], "datatype": "FLOAT"},
     "server": {"aliases": ["server", "Server", "SERVER"], "datatype": "VARCHAR(255)"},
     "date": {"aliases": ["date", "Date", "DATE"], "datatype": "DATE"},
-    "exchange": {"aliases": ["exchange symabol", "Exchange Symbol", "EXCHANGESYBAMOL"], "datatype": "VARCHAR(255)"},
+    "exchange": {"aliases": ["exchange symbol", "Exchange Symbol", "EXCHANGE_SYMBOL"], "datatype": "VARCHAR(255)"},  # Fixed typos
     "strategy_tag": {"aliases": ["strategy tag", "StrategyTag", "strategy_tag"], "datatype": "VARCHAR(255)"},
     "txn": {"aliases": ["txn", "Txn", "TXN"], "datatype": "VARCHAR(255)"},
     "entry_time": {"aliases": ["entry time", "EntryTime", "entry_time"], "datatype": "VARCHAR(255)"},
@@ -176,7 +156,7 @@ legs_column_mapping = {
     "lots": {"aliases": ["lots", "Lots", "LOTS"], "datatype": "INT"},
     "entry_qty": {"aliases": ["entry qty", "EntryQty", "entry_qty"], "datatype": "INT"},
     "entry_filled_qty": {"aliases": ["entry filled qty", "EntryFilledQty", "entry_filled_qty"], "datatype": "INT"},
-    "entry_avg_price": {"aliases": ["entry avg price", "ExitAvgPrice", "entry_avg_price"], "datatype": "FLOAT"},
+    "entry_avg_price": {"aliases": ["entry avg price", "EntryAvgPrice", "entry_avg_price"], "datatype": "FLOAT"},  # Fixed typo in alias
     "exit_qty": {"aliases": ["exit qty", "ExitQty", "exit_qty"], "datatype": "INT"},
     "exit_filled_qty": {"aliases": ["exit filled qty", "ExitFilledQty", "exit_filled_qty"], "datatype": "INT"},
     "exit_avg_price": {"aliases": ["exit avg price", "ExitAvgPrice", "exit_avg_price"], "datatype": "FLOAT"},

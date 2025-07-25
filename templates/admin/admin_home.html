@@ -33,7 +33,7 @@
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">Upload Files to Table</h5>
-            <form method="POST" action="{{ url_for('admin.upload_files') }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ url_for('admin.upload_files') }}" enctype="multipart/form-data" id="uploadForm">
                 <div class="mb-3">
                     <label for="table" class="form-label">Select Table</label>
                     <select class="form-select" id="table" name="table" required style="max-height: 200px; overflow-y: auto;">
@@ -60,22 +60,9 @@
                     </select>
                 </div>
 
-                <!-- Optional DTE dropdown (hidden by default) -->
-                <div class="mb-3" id="dte_dropdown" style="display: none;">
-                    <label for="dte" class="form-label">Select DTE</label>
-                    <select class="form-select" id="dte" name="dte">
-                        <option value="0dte">0DTE</option>
-                        <option value="1dte">1DTE</option>
-                        <option value="2dte">2DTE</option>
-                        <option value="3dte">3DTE</option>
-                        <option value="4dte">4DTE</option>
-                    </select>
-                </div>
-
                 <div class="upload-container">
                     <div class="upload-button-group">
                         <button type="button" class="upload-button" id="uploadTrigger">Select files</button>
-                        <!-- <button type="button" class="btn btn-secondary ms-2" id="driveTrigger">Add Google Drive Link</button> -->
                     </div>
                     <div class="upload-box" id="uploadBox">
                         <input type="file" id="file_upload" name="file_upload" class="file-input" multiple accept=".csv,.xlsx,.xls">
@@ -83,42 +70,57 @@
                     </div>
                     <input type="text" id="drive_link" name="drive_link" class="form-control mt-2" placeholder="Paste Google Drive folder link (optional)" style="display: none;">
                 </div>
-                <button type="submit" class="btn btn-grd-primary mt-3">Upload</button>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-grd-primary" id="uploadButton">
+                        <span id="spinner" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
+                        <span id="buttonText">Upload</span>
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 </div>
 
+<style>
+    .spinner-border {
+        vertical-align: middle;
+    }
+    .upload-box.dragover {
+        border: 2px dashed #007bff;
+        background-color: #f8f9fa;
+    }
+</style>
+
 <script>
     function toggleDteDropdown() {
         const tableSelect = document.getElementById('table');
         const dteDropdown = document.getElementById('dte_dropdown');
-        if (tableSelect.value === 'users') {
-            dteDropdown.style.display = 'block';
-        } else {
-            dteDropdown.style.display = 'none';
+        if (tableSelect && dteDropdown) {
+            dteDropdown.style.display = tableSelect.value === 'users' ? 'block' : 'none';
         }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Restore last selected table from localStorage
-        const savedTable = localStorage.getItem('lastSelectedTable');
         const tableSelect = document.getElementById('table');
-        if (savedTable) {
-            for (const option of tableSelect.options) {
-                if (option.value === savedTable) {
-                    option.selected = true;
-                    break;
-                }
+        if (!tableSelect) return;
+
+        try {
+            const savedTable = localStorage.getItem('lastSelectedTable');
+            const validOptions = Array.from(tableSelect.options).map(opt => opt.value);
+
+            if (savedTable && validOptions.includes(savedTable)) {
+                tableSelect.value = savedTable;
             }
-        }
 
-        toggleDteDropdown();
-
-        tableSelect.addEventListener('change', (e) => {
-            localStorage.setItem('lastSelectedTable', e.target.value);
             toggleDteDropdown();
-        });
+
+            tableSelect.addEventListener('change', (e) => {
+                localStorage.setItem('lastSelectedTable', e.target.value);
+                toggleDteDropdown();
+            });
+        } catch (err) {
+            console.error('LocalStorage error:', err);
+        }
     });
 
     // Upload functionality
@@ -127,7 +129,10 @@
     const fileInput = document.getElementById('file_upload');
     const driveTrigger = document.getElementById('driveTrigger');
     const driveLinkInput = document.getElementById('drive_link');
-    const form = document.querySelector("form[action=\"{{ url_for('admin.upload_files') }}\"]");
+    const form = document.getElementById('uploadForm');
+    const uploadButton = document.getElementById('uploadButton');
+    const spinner = document.getElementById('spinner');
+    const buttonText = document.getElementById('buttonText');
 
     uploadTrigger.addEventListener('click', () => {
         fileInput.click();
@@ -174,6 +179,10 @@
     }
 
     form.addEventListener('submit', (e) => {
+        spinner.style.display = 'inline-block';
+        buttonText.textContent = 'Processing...';
+        uploadButton.disabled = true;
+
         if (driveLinkInput.value && !fileInput.files.length) {
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
