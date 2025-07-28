@@ -40,7 +40,7 @@
     }
 
     .container-fluid { padding: 1.5rem; background: hsl(var(--background)); }
-    .header { background: hsl(var(--card)); border-radius: var(--radius); padding: 1rem 1.5rem 1rem 1.5rem; margin-bottom: 1rem; box-shadow: var(--shadow-lg); text-align: center; }
+    .header { background: hsl(var(--card)); border-radius: var(--radius); padding: 1rem 1.5rem; margin-bottom: 1rem; box-shadow: var(--shadow-lg); text-align: center; }
     .header h1 { font-size: 2rem; color: hsl(var(--foreground)); margin-bottom: 0.5rem; }
     .header p { color: hsl(var(--muted-foreground)); font-size: 1rem; }
     .card { background: hsl(var(--card)); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); border: 1px solid hsl(var(--border)); }
@@ -134,9 +134,7 @@
     <div class="tabs">
         <button class="tab active" data-tab="data"><i class="fas fa-table"></i> Data View</button>
         <button class="tab" data-tab="bulk"><i class="fas fa-edit"></i> Bulk Operations</button>
-        <button class="tab" data-tab="filters"><i class="fas fa-filter"></i> Advanced Filters</button>
         <button class="tab" data-tab="columns"><i class="fas fa-columns"></i> Column Manager</button>
-        <button class="tab" data-tab="export"><i class="fas fa-file-export"></i> Export Data</button>
     </div>
 
     <!-- Tab Contents -->
@@ -167,15 +165,11 @@
                     </select>
                 </div>
                 <div>
-                    <!-- Inside the search-filters or selectedActions div -->
                     <button type="button" id="undoChanges" class="btn btn-warning"><i class="fas fa-undo"></i> Undo</button>
-                    
                     <button type="button" id="refreshData" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
-                    
                 </div>
             </form>
             
-             
             <!-- Selected Rows Actions -->
             <div id="selectedActions" class="hidden mb-4">
                 <div class="flex items-center gap-2">
@@ -185,7 +179,7 @@
                         <input type="hidden" id="selectedRowsInput" name="rows_to_delete">
                         <button type="submit" id="deleteSelected" class="btn btn-danger"><i class="fas fa-trash"></i> Delete Selected</button>
                     </form>
-                    <button id="exportSelected" class="btn btn-secondary"><i class="fas fa-download"></i> Export Selected</button>
+                    <button type="button" id="exportSelected" class="btn btn-secondary"><i class="fas fa-download"></i> Export Selected</button>
                 </div>
             </div>
 
@@ -200,14 +194,14 @@
             <!-- Pagination -->
             <div class="pagination">
                 <div class="pagination-info">
-                    <span id="paginationInfo">Showing {{ (page - 1) * per_page + 1 }} to {% if page * per_page < total_rows|default(0) %}{{ page * per_page }}{% else %}{{ total_rows|default(0) }}{% endif %} of {{ total_rows|default(0) }} results</span>
+                    <span id="paginationInfo"></span>
                 </div>
                 <div class="pagination-controls">
-                    <a href="{{ url_for('manage_database', table=table_name, page=1, per_page=per_page, search_query=search_query, from_date=from_date, to_date=to_date) }}" class="btn btn-outline {% if page <= 1 %}disabled{% endif %}"><i class="fas fa-angle-double-left"></i></a>
-                    <a href="{{ url_for('manage_database', table=table_name, page=page-1, per_page=per_page, search_query=search_query, from_date=from_date, to_date=to_date) }}" class="btn btn-outline {% if page <= 1 %}disabled{% endif %}"><i class="fas fa-angle-left"></i></a>
-                    <span id="pageInfo" class="badge">Page {{ page }} of {{ total_pages }}</span>
-                    <a href="{{ url_for('manage_database', table=table_name, page=page+1, per_page=per_page, search_query=search_query, from_date=from_date, to_date=to_date) }}" class="btn btn-outline {% if page >= total_pages %}disabled{% endif %}"><i class="fas fa-angle-right"></i></a>
-                    <a href="{{ url_for('manage_database', table=table_name, page=total_pages, per_page=per_page, search_query=search_query, from_date=from_date, to_date=to_date) }}" class="btn btn-outline {% if page >= total_pages %}disabled{% endif %}"><i class="fas fa-angle-double-right"></i></a>
+                    <button type="button" id="firstPage" class="btn btn-outline"><i class="fas fa-angle-double-left"></i></button>
+                    <button type="button" id="prevPage" class="btn btn-outline"><i class="fas fa-angle-left"></i></button>
+                    <span id="pageInfo" class="badge"></span>
+                    <button type="button" id="nextPage" class="btn btn-outline"><i class="fas fa-angle-right"></i></button>
+                    <button type="button" id="lastPage" class="btn btn-outline"><i class="fas fa-angle-double-right"></i></button>
                 </div>
             </div>
         </div>
@@ -288,29 +282,6 @@
                         <button type="submit" id="executeBulkDelete" class="btn btn-danger"><i class="fas fa-trash"></i> Execute Delete</button>
                     </form>
                 </div>
-                <!-- Bulk Insert
-                <div class="operation-card">
-                    <h3 class="mb-4"><i class="fas fa-plus"></i> Bulk Insert</h3>
-                    <form method="POST" action="{{ url_for('manage_database', table=table_name) }}">
-                        <input type="hidden" name="bulk_insert" value="true">
-                        <div class="form-group">
-                            <label class="form-label">Date Range:</label>
-                            <input type="text" id="bulkInsertDateRange" name="date_range" class="form-control flatpickr-input" placeholder="Select date range...">
-                            <input type="hidden" name="insert_from_date" id="bulkInsertFromDate">
-                            <input type="hidden" name="insert_to_date" id="bulkInsertToDate">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">CSV Data:</label>
-                            <textarea id="bulkInsertData" name="csv_data" class="form-control" rows="6" placeholder="Paste CSV data here..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="bulkInsertHeaders" name="has_headers"> First row contains headers
-                            </label>
-                        </div>
-                        <button type="submit" id="executeBulkInsert" class="btn btn-success"><i class="fas fa-plus"></i> Execute Insert</button>
-                    </form>
-                </div> -->
                 <!-- Server Data Delete -->
                 <div class="operation-card">
                     <h3 class="mb-4"><i class="fas fa-server"></i> Server Data Delete</h3>
@@ -324,31 +295,12 @@
                             <label class="form-label">Select Server:</label>
                             <select id="serverDeleteSelect" name="server" class="form-control">
                                 <option value="">-- Select Server --</option>
-                                <!-- Servers will be populated dynamically -->
                             </select>
                         </div>
                         <button type="submit" id="executeServerDelete" class="btn btn-danger"><i class="fas fa-trash"></i> Delete Server Data</button>
                         <button type="button" id="undoServerDelete" class="btn btn-warning mt-2"><i class="fas fa-undo"></i> Undo Delete</button>
                     </form>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Advanced Filters Tab -->
-    <div id="tab-filters" class="tab-content">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-filter"></i>
-                <span class="card-title">Advanced Filters</span>
-            </div>
-            <div id="filterContainer">
-                <div class="mb-4">
-                    <button type="button" id="addFilter" class="btn btn-primary"><i class="fas fa-plus"></i> Add Filter</button>
-                    <button type="button" id="clearFilters" class="btn btn-secondary"><i class="fas fa-times"></i> Clear All</button>
-                    <button type="button" id="applyFilters" class="btn btn-success"><i class="fas fa-check"></i> Apply Filters</button>
-                </div>
-                <div id="filterList"></div>
             </div>
         </div>
     </div>
@@ -462,63 +414,6 @@
         </div>
     </div>
 
-    <!-- Export/Import Tab -->
-    <div id="tab-export" class="tab-content">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-file-export"></i>
-                <span class="card-title">Data Export</span>
-            </div>
-            <div class="bulk-operations">
-                <!-- Export Data -->
-                <div class="operation-card">
-                    <h3 class="mb-4"><i class="fas fa-download"></i> Export Data</h3>
-                    <form id="exportForm">
-                        <div class="form-group">
-                            <label class="form-label">Export Format:</label>
-                            <select id="exportFormat" class="form-control">
-                                <option value="csv">CSV</option>
-                                <option value="excel">Excel</option>
-                                <option value="sql">SQL</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="exportHeaders" checked> Include headers
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="exportFiltered"> Export filtered data
-                            </label>
-                        </div>
-                        <button type="button" id="exportData" class="btn btn-success"><i class="fas fa-download"></i> Export</button>
-                    </form>
-                </div>
-                <!-- Import Data
-                <div class="operation-card">
-                    <h3 class="mb-4"><i class="fas fa-upload"></i> Import Data</h3>
-                    <form method="POST" action="{{ url_for('manage_database', table=table_name) }}" enctype="multipart/form-data">
-                        <input type="hidden" name="import_data" value="true">
-                        <div class="form-group">
-                            <label class="form-label">Select File:</label>
-                            <input type="file" id="importInput" name="file" class="form-control" accept=".csv,.xlsx">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Import Mode:</label>
-                            <select id="importMode" name="import_mode" class="form-control">
-                                <option value="append">Append</option>
-                                <option value="replace">Replace</option>
-                                <option value="update">Update</option>
-                            </select>
-                        </div>
-                        <button type="submit" id="importData" class="btn btn-primary"><i class="fas fa-upload"></i> Import</button>
-                    </form>
-                </div> -->
-            </div>
-        </div>
-    </div>
-
     <!-- Loading Indicator -->
     <div id="loadingIndicator" class="hidden">
         <div class="loading">
@@ -559,7 +454,6 @@ class DatabaseManager {
         this.selectedRows = new Set();
         this.sortColumn = '';
         this.sortDirection = 'asc';
-        this.filters = [];
         this.editHistory = [];
         this.serverDeleteHistory = [];
 
@@ -618,36 +512,51 @@ class DatabaseManager {
             undoServerDeleteButton.addEventListener('click', () => this.undoServerDelete());
         }
 
-        document.querySelectorAll('.pagination-controls a').forEach(link => {
-            link.addEventListener('click', (e) => {
-                if (!link.classList.contains('disabled')) {
-                    const href = link.getAttribute('href');
-                    const urlParams = new URLSearchParams(href.split('?')[1]);
-                    this.currentPage = parseInt(urlParams.get('page')) || 1;
+        const exportSelectedButton = document.getElementById('exportSelected');
+        if (exportSelectedButton) {
+            exportSelectedButton.addEventListener('click', () => this.exportSelectedRows());
+        }
+
+        // Pagination controls
+        const firstPage = document.getElementById('firstPage');
+        const prevPage = document.getElementById('prevPage');
+        const nextPage = document.getElementById('nextPage');
+        const lastPage = document.getElementById('lastPage');
+
+        if (firstPage) {
+            firstPage.addEventListener('click', () => {
+                if (this.currentPage > 1) {
+                    this.currentPage = 1;
                     this.loadTableData();
-                    e.preventDefault();
                 }
             });
-        });
-
-        const addFilterButton = document.getElementById('addFilter');
-        if (addFilterButton) {
-            addFilterButton.addEventListener('click', () => this.addFilter());
         }
 
-        const clearFiltersButton = document.getElementById('clearFilters');
-        if (clearFiltersButton) {
-            clearFiltersButton.addEventListener('click', () => this.clearFilters());
+        if (prevPage) {
+            prevPage.addEventListener('click', () => {
+                if (this.currentPage > 1) {
+                    this.currentPage--;
+                    this.loadTableData();
+                }
+            });
         }
 
-        const applyFiltersButton = document.getElementById('applyFilters');
-        if (applyFiltersButton) {
-            applyFiltersButton.addEventListener('click', () => this.applyFilters());
+        if (nextPage) {
+            nextPage.addEventListener('click', () => {
+                if (this.currentPage < this.totalPages) {
+                    this.currentPage++;
+                    this.loadTableData();
+                }
+            });
         }
 
-        const exportDataButton = document.getElementById('exportData');
-        if (exportDataButton) {
-            exportDataButton.addEventListener('click', () => this.exportData());
+        if (lastPage) {
+            lastPage.addEventListener('click', () => {
+                if (this.currentPage < this.totalPages) {
+                    this.currentPage = this.totalPages;
+                    this.loadTableData();
+                }
+            });
         }
     }
 
@@ -694,20 +603,6 @@ class DatabaseManager {
                     if (selectedDates.length === 2) {
                         document.getElementById('bulkDeleteFromDate').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
                         document.getElementById('bulkDeleteToDate').value = flatpickr.formatDate(selectedDates[1], "Y-m-d");
-                    }
-                }
-            });
-        }
-
-        const bulkInsertDateRange = document.getElementById('bulkInsertDateRange');
-        if (bulkInsertDateRange) {
-            flatpickr("#bulkInsertDateRange", {
-                mode: "range",
-                dateFormat: "Y-m-d",
-                onChange: (selectedDates) => {
-                    if (selectedDates.length === 2) {
-                        document.getElementById('bulkInsertFromDate').value = flatpickr.formatDate(selectedDates[0], "Y-m-d");
-                        document.getElementById('bulkInsertToDate').value = flatpickr.formatDate(selectedDates[1], "Y-m-d");
                     }
                 }
             });
@@ -893,7 +788,6 @@ class DatabaseManager {
         const saveEdit = async () => {
             const newValue = input.value;
             if (newValue !== currentValue) {
-                // Store change in editHistory
                 this.editHistory.push({
                     rowId: row[this.primaryKey],
                     column: column,
@@ -991,14 +885,32 @@ class DatabaseManager {
         const actionsDiv = document.getElementById('selectedActions');
         const countSpan = document.getElementById('selectedCount');
         const selectedRowsInput = document.getElementById('selectedRowsInput');
+        const exportButton = document.getElementById('exportSelected');
+        const deleteButton = document.getElementById('deleteSelected');
 
         if (count > 0) {
             actionsDiv.classList.remove('hidden');
             countSpan.textContent = `${count} rows selected`;
             selectedRowsInput.value = Array.from(this.selectedRows).join(', ');
+            exportButton.disabled = false;
+            deleteButton.disabled = false;
         } else {
             actionsDiv.classList.add('hidden');
+            exportButton.disabled = true;
+            deleteButton.disabled = true;
         }
+    }
+
+    exportSelectedRows() {
+        if (this.selectedRows.size === 0) {
+            this.showAlert('No rows selected for export', 'warning');
+            return;
+        }
+
+        const selectedData = this.data.filter(row => this.selectedRows.has(row[this.primaryKey]));
+        const csv = this.exportToCSV(selectedData, true);
+        this.downloadFile(csv, `${this.tableName}_selected_export.csv`, 'text/csv');
+        this.showAlert('Selected rows exported successfully!', 'success');
     }
 
     sortBy(column) {
@@ -1009,79 +921,6 @@ class DatabaseManager {
             this.sortDirection = 'asc';
         }
         this.loadTableData();
-    }
-
-    addFilter() {
-        const filterList = document.getElementById('filterList');
-        const filterDiv = document.createElement('div');
-        filterDiv.className = 'form-group flex gap-2';
-        filterDiv.innerHTML = `
-            <select class="form-control" name="filter_column">
-                <option value="">-- Select Column --</option>
-                ${this.columns.map(col => `<option value="${col}">${col}</option>`).join('')}
-            </select>
-            <select class="form-control" name="filter_condition">
-                <option value="equals">Equals</option>
-                <option value="contains">Contains</option>
-                <option value="starts">Starts With</option>
-                <option value="ends">Ends With</option>
-            </select>
-            <input type="text" class="form-control" name="filter_value" placeholder="Value">
-            <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="fas fa-trash"></i></button>
-        `;
-        filterList.appendChild(filterDiv);
-    }
-
-    clearFilters() {
-        document.getElementById('filterList').innerHTML = '';
-        this.filters = [];
-        this.loadTableData();
-    }
-
-    applyFilters() {
-        this.filters = [];
-        document.querySelectorAll('#filterList .form-group').forEach(group => {
-            const column = group.querySelector('[name="filter_column"]').value;
-            const condition = group.querySelector('[name="filter_condition"]').value;
-            const value = group.querySelector('[name="filter_value"]').value;
-            if (column && value) {
-                this.filters.push({ column, condition, value });
-            }
-        });
-        this.loadTableData();
-    }
-
-    exportData() {
-        const format = document.getElementById('exportFormat').value;
-        const includeHeaders = document.getElementById('exportHeaders').checked;
-        const filteredOnly = document.getElementById('exportFiltered').checked;
-
-        let content = '';
-        let filename = `${this.tableName}_export`;
-        let mimeType = 'text/plain';
-
-        const dataToExport = filteredOnly ? this.data : this.data;
-
-        switch (format) {
-            case 'csv':
-                content = this.exportToCSV(dataToExport, includeHeaders);
-                filename += '.csv';
-                mimeType = 'text/csv';
-                break;
-            case 'excel':
-                content = this.exportToCSV(dataToExport, includeHeaders);
-                filename += '.csv';
-                mimeType = 'text/csv';
-                break;
-            case 'sql':
-                content = this.exportToSQL(dataToExport);
-                filename += '.sql';
-                mimeType = 'text/plain';
-                break;
-        }
-
-        this.downloadFile(content, filename, mimeType);
-        this.showAlert('Data exported successfully!', 'success');
     }
 
     exportToCSV(data, includeHeaders) {
@@ -1119,9 +958,25 @@ class DatabaseManager {
     }
 
     updatePagination() {
-        document.getElementById('paginationInfo').textContent = 
-            `Showing ${(this.currentPage - 1) * this.rowsPerPage + 1} to ${Math.min(this.currentPage * this.rowsPerPage, this.totalRows)} of ${this.totalRows} results`;
-        document.getElementById('pageInfo').textContent = `Page ${this.currentPage} of ${this.totalPages}`;
+        const paginationInfo = document.getElementById('paginationInfo');
+        const pageInfo = document.getElementById('pageInfo');
+        const firstPage = document.getElementById('firstPage');
+        const prevPage = document.getElementById('prevPage');
+        const nextPage = document.getElementById('nextPage');
+        const lastPage = document.getElementById('lastPage');
+
+        if (paginationInfo) {
+            paginationInfo.textContent = 
+                `Showing ${(this.currentPage - 1) * this.rowsPerPage + 1} to ${Math.min(this.currentPage * this.rowsPerPage, this.totalRows)} of ${this.totalRows} results`;
+        }
+        if (pageInfo) {
+            pageInfo.textContent = `Page ${this.currentPage} of ${this.totalPages}`;
+        }
+
+        if (firstPage) firstPage.disabled = this.currentPage === 1;
+        if (prevPage) prevPage.disabled = this.currentPage === 1;
+        if (nextPage) nextPage.disabled = this.currentPage >= this.totalPages;
+        if (lastPage) lastPage.disabled = this.currentPage >= this.totalPages;
     }
 
     switchTab(tabName) {

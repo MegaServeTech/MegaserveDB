@@ -71,7 +71,7 @@ user_column_variations = {
     "user_id": {"aliases": ["user id", "userid", "user_id", "USERID", "UserID"], "datatype": "VARCHAR(255)"},
     "alias": {"aliases": ["alias"], "datatype": "VARCHAR(255)"},
     "mtm_all": {"aliases": ["mtm (all)", "MTM_(All)"], "datatype": "FLOAT"},
-    "allocation": {"aliases": ["allocation", "ALOOCATION"], "datatype": "FLOAT"},
+    "allocation": {"aliases": ["allocation","alocation", "ALOOCATION"], "datatype": "FLOAT"},
     "max_loss": {"aliases": ["maxloss", "max-loss", "max loss"], "datatype": "FLOAT"},
     "server": {"aliases": ["server", "Server", "SERVER"], "datatype": "VARCHAR(255)"},
     "date": {"aliases": ["date", "Date", "DATE"], "datatype": "DATE"},
